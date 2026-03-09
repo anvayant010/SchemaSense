@@ -1,0 +1,61 @@
+{
+  "PostgreSQL": {
+    "supported_types": ["INT", "BIGINT", "VARCHAR", "TEXT", "DATE", "TIMESTAMP", "JSON", "UUID", "GEOMETRY", "BYTEA"],
+    "supports_fk": true,
+    "supports_unique": true,
+    "supports_check": true,
+    "supports_json_indexing": true,
+    "supports_partitioning": true,
+    "supports_stored_procs": true,
+    "max_varchar_len": null,
+    "notes": "Postgres with PostGIS"
+  },
+
+  "MySQL": {
+    "supported_types": ["INT", "BIGINT", "VARCHAR", "TEXT", "DATE", "DATETIME", "JSON", "BLOB"],
+    "supports_fk": true,
+    "supports_unique": true,
+    "supports_check": false,
+    "supports_json_indexing": false,
+    "supports_partitioning": true,
+    "supports_stored_procs": true,
+    "max_varchar_len": 65535,
+    "notes": "MySQL (InnoDB)"
+  },
+
+  "SQLite": {
+    "supported_types": ["INT", "INTEGER", "REAL", "TEXT", "BLOB"],
+    "supports_fk": true,
+    "supports_unique": true,
+    "supports_check": true,
+    "supports_json_indexing": false,
+    "supports_partitioning": false,
+    "supports_stored_procs": false,
+    "max_varchar_len": null,
+    "notes": "SQLite"
+  },
+
+  "Oracle": {
+    "supported_types": ["NUMBER", "INT", "VARCHAR2", "CLOB", "DATE", "TIMESTAMP", "BLOB"],
+    "supports_fk": true,
+    "supports_unique": true,
+    "supports_check": true,
+    "supports_json_indexing": false,
+    "supports_partitioning": true,
+    "supports_stored_procs": true,
+    "max_varchar_len": 4000,
+    "notes": "Oracle DB"
+  },
+
+  "MongoDB": {
+    "supported_types": ["DOCUMENT", "JSON"],
+    "supports_fk": false,
+    "supports_unique": true,
+    "supports_check": false,
+    "supports_json_indexing": true,
+    "supports_partitioning": true,
+    "supports_stored_procs": false,
+    "max_varchar_len": null,
+    "notes": "MongoDB (document store)"
+  }
+}
