@@ -1,0 +1,6 @@
+to run the code:
+run the following command in terminal:
+python main.py --input sample_schema.csv --format csv --out parsed.json --db-features data/db_features.json --score-out scoring.json
+
+to run parse & score sql file
+just replace the input and format type in the above command
