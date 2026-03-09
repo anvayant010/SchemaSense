@@ -1,0 +1,23 @@
+table,column_name,data_type,constraints,row_estimate,ref_table,ref_column
+employees,id,INT,PRIMARY KEY,5000,,
+employees,first_name,VARCHAR(50),NOT NULL,5000,,
+employees,last_name,VARCHAR(50),NOT NULL,5000,,
+employees,email,VARCHAR(100),UNIQUE,5000,,
+employees,department_id,INT,FOREIGN KEY,5000,departments,id
+employees,manager_id,INT,FOREIGN KEY,5000,employees,id
+departments,id,INT,PRIMARY KEY,50,,
+departments,name,VARCHAR(50),NOT NULL,50,,
+departments,location_id,INT,FOREIGN KEY,50,locations,id
+locations,id,INT,PRIMARY KEY,10,,
+locations,name,VARCHAR(50),NOT NULL,10,,
+projects,id,INT,PRIMARY KEY,200,,
+projects,name,VARCHAR(100),NOT NULL,200,,
+projects,department_id,INT,FOREIGN KEY,200,departments,id
+projects,start_date,DATE,,200,,
+projects,end_date,DATE,,200,,
+tasks,id,INT,PRIMARY KEY,2000,,
+tasks,name,VARCHAR(100),NOT NULL,2000,,
+tasks,project_id,INT,FOREIGN KEY,2000,projects,id
+tasks,assigned_to,INT,FOREIGN KEY,2000,employees,id
+tasks,status,VARCHAR(20),NOT NULL,2000,,
+
