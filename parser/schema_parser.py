@@ -3,26 +3,14 @@ import csv
 import io
 import json
 import argparse
-from dataclasses import dataclass, asdict
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
 from pathlib import Path
 import re
 
-import sqlglot
+from core.models import ParsedSchema, Table, Column
+
+import sqlglot  # kept for potential future use
 from sqlglot import exp
-
-
-@dataclass
-class Column:
-    column_name: str
-    data_type: str
-    constraints: str
-
-
-@dataclass
-class Table:
-    table_name: str
-    columns: List[Column]
 
 
 class SchemaParser:
@@ -32,7 +20,7 @@ class SchemaParser:
         self.input_format = input_format.lower()
         self.dialect = dialect
 
-    def parse(self) -> List[Table]:
+    def parse(self) -> ParsedSchema:
         if self.input_format == "csv":
             return self._parse_csv()
         elif self.input_format == "json":
@@ -43,8 +31,9 @@ class SchemaParser:
             raise ValueError(f"Unsupported format: {self.input_format}")
 
     # ------------------- CSV Parser -------------------
-    def _parse_csv(self) -> List[Table]:
-        tables: Dict[str, List[Column]] = {}
+    def _parse_csv(self) -> ParsedSchema:
+        tables_dict: Dict[str, List[Column]] = {}
+
         with open(self.input_file, "r", encoding="utf-8") as f:
             raw = f.read()
 
@@ -96,59 +85,101 @@ class SchemaParser:
             explicit_nullable = get_field(row, "nullable", "is_nullable", default=None)
 
             constraints_text = (get_field(row, "constraints", "constraint", default="") or "").strip()
-            parsed = parse_constraints_text(constraints_text)
+            parsed_flags = parse_constraints_text(constraints_text)
 
-            is_pk = parse_bool_token(explicit_is_pk) if explicit_is_pk is not None else parsed["is_pk"]
-            is_fk = parse_bool_token(explicit_is_fk) if explicit_is_fk is not None else parsed["is_fk"]
-            nullable = parse_bool_token(explicit_nullable) if explicit_nullable is not None else parsed["nullable"]
+            is_pk = parse_bool_token(explicit_is_pk) if explicit_is_pk is not None else parsed_flags["is_pk"]
+            is_fk = parse_bool_token(explicit_is_fk) if explicit_is_fk is not None else parsed_flags["is_fk"]
+            nullable = parse_bool_token(explicit_nullable) if explicit_nullable is not None else parsed_flags["nullable"]
 
-            ref_table = get_field(row, "ref_table", "references_table", "ref_tbl", default=None)
-            ref_column = get_field(row, "ref_column", "references_column", "ref_col", default=None)
-            references = {"table": ref_table.strip(), "column": ref_column.strip()} if ref_table and ref_column else None
+            ref_table = get_field(row, "ref_table", "references_table", "ref_tbl")
+            ref_column = get_field(row, "ref_column", "references_column", "ref_col")
+            references = None
+            if ref_table and ref_column:
+                references = {
+                    "table": ref_table.strip(),
+                    "column": ref_column.strip()
+                }
 
-            col = Column(column_name=col_name, data_type=data_type, constraints=constraints_text)
-            setattr(col, "is_pk", is_pk)
-            setattr(col, "is_fk", is_fk)
-            setattr(col, "nullable", nullable)
-            setattr(col, "row_estimate", None)
-            setattr(col, "references", references)
+            # Create proper Pydantic Column
+            column = Column(
+                name=col_name,
+                data_type=data_type,
+                raw_type=data_type,
+                nullable=nullable,
+                is_primary_key=is_pk,
+                is_foreign_key=is_fk,
+                is_unique=False,  # can be extended later
+                references=references,
+                constraints=[constraints_text] if constraints_text else []
+            )
 
-            tables.setdefault(tname, []).append(col)
+            tables_dict.setdefault(tname, []).append(column)
 
-        return [Table(table_name=t, columns=c) for t, c in tables.items()]
+        # Build Table objects
+        tables = [
+            Table(name=table_name, columns=columns)
+            for table_name, columns in tables_dict.items()
+        ]
+
+        return ParsedSchema(
+            tables=tables,
+            source_format="csv",
+            source_file=self.input_file
+        )
 
     # ------------------- JSON Parser -------------------
-    def _parse_json(self) -> List[Table]:
+    def _parse_json(self) -> ParsedSchema:
         with open(self.input_file, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        if isinstance(data, list):
-            return [Table(table_name=t["table_name"], columns=[Column(**col) for col in t["columns"]]) for t in data]
+        tables: List[Table] = []
 
-        if isinstance(data, dict) and "tables" in data:
-            tables = []
+        if isinstance(data, list):
+            for t in data:
+                tname = t.get("table_name") or t.get("name")
+                if not tname:
+                    continue
+                cols = []
+                for c in t.get("columns", []):
+                    cols.append(Column(
+                        name=c.get("name") or c.get("column_name"),
+                        data_type=c.get("type") or c.get("data_type", "TEXT"),
+                        raw_type=c.get("type") or c.get("data_type"),
+                        constraints=c.get("constraints", []) if isinstance(c.get("constraints"), list) else [c.get("constraints", "")]
+                    ))
+                tables.append(Table(name=tname, columns=cols))
+
+        elif isinstance(data, dict) and "tables" in data:
             for tname, tdef in data["tables"].items():
                 cols = []
                 for c in tdef.get("columns", []):
                     cols.append(Column(
-                        column_name=c.get("name") or c.get("column_name"),
-                        data_type=c.get("type") or "TEXT",
-                        constraints=c.get("constraints", "")
+                        name=c.get("name") or c.get("column_name"),
+                        data_type=c.get("type") or c.get("data_type", "TEXT"),
+                        raw_type=c.get("type") or c.get("data_type"),
+                        constraints=c.get("constraints", []) if isinstance(c.get("constraints"), list) else [c.get("constraints", "")]
                     ))
-                tables.append(Table(table_name=tname, columns=cols))
-            return tables
+                tables.append(Table(name=tname, columns=cols))
 
-        raise ValueError("Unsupported JSON format for schema input")
+        else:
+            raise ValueError("Unsupported JSON schema format")
 
-    # ------------------- SQL Parser-------------------
-    def _parse_sql(self) -> List[Table]:
+        return ParsedSchema(
+            tables=tables,
+            source_format="json",
+            source_file=self.input_file
+        )
+
+    # ------------------- SQL Parser -------------------
+    def _parse_sql(self) -> ParsedSchema:
         path = Path(self.input_file)
         if not path.exists():
             raise FileNotFoundError(f"SQL file not found: {self.input_file}")
 
         sql_text = path.read_text(encoding="utf-8")
-        tables_out: List[Table] = []
+        tables: List[Table] = []
 
+        # Keeping your regex-based approach for now (can upgrade to sqlglot later)
         create_table_regex = re.compile(
             r"CREATE\s+TABLE\s+([`\"\[\]\w]+)\s*\((.*?)\);",
             flags=re.IGNORECASE | re.DOTALL
@@ -181,81 +212,84 @@ class SchemaParser:
             tname = m.group(1).strip("`\"[]")
             inner = m.group(2)
             col_texts = split_columns(inner)
-            cols: List[Column] = []
+            columns: List[Column] = []
 
             for ctext in col_texts:
                 ctext = ctext.strip()
-                # skip table-level constraints
                 if re.match(r"^(PRIMARY|FOREIGN|UNIQUE|CONSTRAINT|CHECK)\b", ctext, flags=re.IGNORECASE):
                     continue
+
                 parts = ctext.split(None, 1)
                 if not parts:
                     continue
+
                 cname = parts[0].strip("`\"[]")
                 rest = parts[1] if len(parts) > 1 else ""
                 tmatch = re.match(r"^([A-Za-z0-9_]+(\s*\([^\)]*\))?)", rest)
                 dtype = tmatch.group(1).strip().upper() if tmatch else "TEXT"
-                cons_txt = rest[len(tmatch.group(0)):].strip() if tmatch else rest
+                cons_txt = rest[len(tmatch.group(0)) if tmatch else 0:].strip()
 
                 is_pk = bool(re.search(r"\bPRIMARY\s+KEY\b", cons_txt, flags=re.IGNORECASE))
                 is_fk = bool(re.search(r"\bREFERENCES\b", cons_txt, flags=re.IGNORECASE))
                 nullable = not bool(re.search(r"\bNOT\s+NULL\b", cons_txt, flags=re.IGNORECASE))
 
-                refm = re.search(r"REFERENCES\s+([`\"\[\]\w]+)\s*\(\s*([`\"\[\]\w]+)\s*\)", cons_txt, flags=re.IGNORECASE)
-                references = {"table": refm.group(1).strip("`\"[]"), "column": refm.group(2).strip("`\"[]")} if refm else None
+                refm = re.search(
+                    r"REFERENCES\s+([`\"\[\]\w]+)\s*\(\s*([`\"\[\]\w]+)\s*\)",
+                    cons_txt,
+                    flags=re.IGNORECASE
+                )
+                references = None
+                if refm:
+                    references = {
+                        "table": refm.group(1).strip("`\"[]"),
+                        "column": refm.group(2).strip("`\"[]")
+                    }
 
-                col = Column(column_name=cname, data_type=dtype, constraints=cons_txt)
-                setattr(col, "is_pk", is_pk)
-                setattr(col, "is_fk", is_fk)
-                setattr(col, "nullable", nullable)
-                setattr(col, "references", references)
-                cols.append(col)
+                column = Column(
+                    name=cname,
+                    data_type=dtype,
+                    raw_type=dtype,
+                    nullable=nullable,
+                    is_primary_key=is_pk,
+                    is_foreign_key=is_fk,
+                    references=references,
+                    constraints=[cons_txt] if cons_txt else []
+                )
+                columns.append(column)
 
-            tables_out.append(Table(table_name=tname, columns=cols))
+            if columns:
+                tables.append(Table(name=tname, columns=columns))
 
-        if tables_out:
-            print(f"[DEBUG] Extracted {len(tables_out)} tables: {[t.table_name for t in tables_out]}")
-        else:
-            print("⚠️ No CREATE TABLE statements found — check SQL file or dialect.")
-
-        return tables_out
-
-    def to_dict(self, tables: List[Table]) -> Dict[str, Any]:
-        out = {}
-        for table in tables:
-            out[table.table_name] = {
-                "table_name": table.table_name,
-                "columns": []
-            }
-            for col in table.columns:
-                out[table.table_name]["columns"].append({
-                    "column_name": col.column_name,
-                    "data_type": col.data_type,
-                    "constraints": col.constraints,
-                    "is_pk": getattr(col, "is_pk", False),
-                    "is_fk": getattr(col, "is_fk", False),
-                    "nullable": getattr(col, "nullable", True),
-                    "references": getattr(col, "references", None)
-                })
-        return out
+        return ParsedSchema(
+            tables=tables,
+            source_format="sql",
+            source_file=self.input_file
+        )
 
 
 def _cli():
-    ap = argparse.ArgumentParser(description="SchemaParser CLI (csv/json/sql -> canonical tables)")
+    ap = argparse.ArgumentParser(description="SchemaSense Parser - Parse schema files to canonical format")
     ap.add_argument("--input", "-i", required=True, help="Path to input file (CSV, JSON, or SQL)")
-    ap.add_argument("--format", "-f", choices=["csv", "json", "sql"], default="csv", help="Input format")
-    ap.add_argument("--dialect", "-d", default=None, help="SQL dialect (postgres, mysql, sqlite, oracle, etc.)")
-    ap.add_argument("--out", "-o", help="Optional output JSON file for canonical schema")
+    ap.add_argument("--format", "-f", choices=["csv", "json", "sql"], required=True, help="Input format")
+    ap.add_argument("--dialect", "-d", default=None, help="SQL dialect (for future sqlglot usage)")
+    ap.add_argument("--out", "-o", help="Optional: Save parsed schema as JSON")
     args = ap.parse_args()
 
-    sp = SchemaParser(args.input, args.format, dialect=args.dialect)
-    tables = sp.parse()
+    parser = SchemaParser(args.input, args.format, dialect=args.dialect)
+    schema: ParsedSchema = parser.parse()
 
-    pretty = json.dumps(sp.to_dict(tables), indent=2)
-    print(pretty)
+    # Print summary
+    print("Schema Summary:")
+    print(json.dumps(schema.to_summary_dict(), indent=2))
+
+    # Full JSON output
+    json_output = schema.model_dump_json(indent=2)
+    print("\nFull Parsed Schema:")
+    print(json_output)
+
     if args.out:
-        Path(args.out).write_text(pretty, encoding="utf-8")
-        print("✅ Saved canonical schema to:", args.out)
+        Path(args.out).write_text(json_output, encoding="utf-8")
+        print(f"\nSaved parsed schema to: {args.out}")
 
 
 if __name__ == "__main__":

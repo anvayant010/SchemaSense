@@ -1,8 +1,9 @@
 from __future__ import annotations
 import json
 import re
-import argparse
-from typing import List, Dict, Any, Tuple, Optional
+from typing import Dict, Any, Tuple
+
+from core.models import ParsedSchema, Column
 
 DEFAULT_WEIGHTS = {
     "type_support": 0.60,
@@ -14,203 +15,179 @@ _type_regex = re.compile(r"^([a-zA-Z0-9_]+)\s*(?:\(\s*([0-9]+)\s*(?:,\s*([0-9]+)
 
 CANONICAL_TYPE_MAP = {
     "INT": "INT", "INTEGER": "INT", "SMALLINT": "SMALLINT", "BIGINT": "BIGINT",
-    "NUMBER": "DECIMAL", "NUMERIC": "DECIMAL", "DECIMAL": "DECIMAL", "FLOAT": "FLOAT", "DOUBLE": "DOUBLE",
-    "VARCHAR": "VARCHAR", "VARCHAR2": "VARCHAR", "NVARCHAR2": "VARCHAR", "CHAR": "CHAR", "TEXT": "TEXT", "CLOB": "CLOB",
+    "NUMBER": "DECIMAL", "NUMERIC": "DECIMAL", "DECIMAL": "DECIMAL",
+    "FLOAT": "FLOAT", "DOUBLE": "DOUBLE", "REAL": "FLOAT",
+    "VARCHAR": "VARCHAR", "VARCHAR2": "VARCHAR", "NVARCHAR": "VARCHAR", "NVARCHAR2": "VARCHAR",
+    "CHAR": "CHAR", "CHARACTER": "CHAR", "TEXT": "TEXT", "CLOB": "CLOB",
     "BLOB": "BLOB", "BYTEA": "BLOB",
-    "DATE": "DATE", "TIMESTAMP": "TIMESTAMP", "DATETIME": "TIMESTAMP",
-    "JSON": "JSON", "JSONB": "JSON", "DOCUMENT": "DOCUMENT",
-    "BOOLEAN": "BOOLEAN", "UUID": "UUID", "GEOMETRY": "GEOMETRY"
+    "DATE": "DATE", "TIMESTAMP": "TIMESTAMP", "DATETIME": "TIMESTAMP", "TIME": "TIME",
+    "JSON": "JSON", "JSONB": "JSON", "JSON[]": "JSON",
+    "BOOLEAN": "BOOLEAN", "BOOL": "BOOLEAN",
+    "UUID": "UUID",
+    "GEOMETRY": "GEOMETRY", "POINT": "GEOMETRY", "POLYGON": "GEOMETRY",
+    "ARRAY": "ARRAY",
 }
 
-def _parse_type(type_str: Optional[str]) -> Tuple[str, int]:
-    """Return (base_type_upper, length_or_precision_or_0)."""
+def _parse_type(type_str: str | None) -> Tuple[str, int]:
+    """Parse type string → (base_type_upper, length_or_precision_or_0)"""
     if not type_str:
-        return ("TEXT", 0)
+        return "TEXT", 0
     s = str(type_str).strip().upper()
     m = _type_regex.match(s)
     if not m:
-        return (s, 0)
+        return s, 0
     base = m.group(1)
-    length = m.group(2)
-    if length:
-        try:
-            return (base, int(length))
-        except Exception:
-            return (base, 0)
-    return (base, 0)
+    length_str = m.group(2)
+    length = int(length_str) if length_str else 0
+    return base, length
 
-def _canonicalize(base_type: str, type_map: Dict[str,str]) -> str:
+
+def _canonicalize_type(base_type: str) -> str:
+    """Map to canonical type name"""
     b = base_type.upper()
-    return type_map.get(b, b)
+    return CANONICAL_TYPE_MAP.get(b, b)
+
 
 def _load_db_profiles(path: str) -> Dict[str, Dict[str, Any]]:
+    """Load and normalize database capability profiles"""
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
+
     profiles = {}
-    for db, prof in data.items():
-        p = dict(prof) 
+    for db_name, prof in data.items():
+        p = dict(prof)
         supp = prof.get("supported_types", [])
-        p["supported_types"] = set([str(x).strip().upper() for x in supp])
-        for k in ("supports_fk", "supports_unique", "supports_check", "supports_json_indexing",
-                  "supports_partitioning", "supports_stored_procs"):
-            if k not in p:
-                p[k] = False
-        profiles[db] = p
+        p["supported_types"] = {str(x).strip().upper() for x in supp}
+        defaults = {
+            "supports_fk": False,
+            "supports_unique": True,
+            "supports_check": False,
+            "supports_json_indexing": False,
+            "supports_partitioning": False,
+            "supports_stored_procs": False,
+        }
+        for k, default in defaults.items():
+            p.setdefault(k, default)
+        profiles[db_name] = p
     return profiles
 
-def score_schema(tables: List[Any],
-                 db_features_path: str = "data/db_features.json",
-                 type_map: Dict[str,str] = None,
-                 weights: Dict[str, float] = None) -> Dict[str, Any]:
-   
+
+def score_schema(
+    schema: ParsedSchema,
+    db_features_path: str = "data/db_features.json",
+    type_map: Dict[str, str] | None = None,
+    weights: Dict[str, float] | None = None
+) -> Dict[str, Any]:
+    """
+    Score the schema against all known databases.
+    Returns sorted dict of {db_name: {absolute_pct, relative_pct, explanation, raw_score}}
+    """
     if type_map is None:
         type_map = CANONICAL_TYPE_MAP
     if weights is None:
         weights = DEFAULT_WEIGHTS
 
+    if not schema.tables or schema.total_columns == 0:
+        return {}
+
     profiles = _load_db_profiles(db_features_path)
 
-    # Gather schema stats
-    total_columns = 0
-    type_counts: Dict[str,int] = {}
-    constraint_counts = {"pk":0, "fk":0, "unique":0, "not_null":0}
-    special_counts = {"json":0, "geometry":0, "blob":0}
+    type_counts: Dict[str, int] = schema.type_distribution 
+    total_columns = schema.total_columns
 
-    for table in tables:
+    constraint_counts = {
+        "pk": schema.primary_keys_count,
+        "fk": schema.foreign_keys_count,
+        "unique": 0,         
+        "not_null": 0,
+    }
+    special_counts = {
+        "json": 0,
+        "geometry": 0,
+        "blob": 0,
+    }
+
+    for table in schema.tables:
         for col in table.columns:
-            total_columns += 1
-            base, length = _parse_type(getattr(col, "data_type", getattr(col, "type", None)))
-            canon = _canonicalize(base, type_map)
-            type_counts[canon] = type_counts.get(canon, 0) + 1
+            if col.is_unique or "UNIQUE" in [c.upper() for c in col.constraints]:
+                constraint_counts["unique"] += 1
 
-            is_pk = bool(getattr(col, "is_pk", False))
-            is_fk = bool(getattr(col, "is_fk", False))
-            not_null = not bool(getattr(col, "nullable", True))
-            is_unique = False
-            cons_txt = getattr(col, "constraints", None) or getattr(col, "comment", "") or ""
-            if isinstance(cons_txt, str) and "unique" in cons_txt.lower():
-                is_unique = True
+            if not col.nullable:
+                constraint_counts["not_null"] += 1
 
-            if is_pk: constraint_counts["pk"] += 1
-            if is_fk: constraint_counts["fk"] += 1
-            if is_unique: constraint_counts["unique"] += 1
-            if not_null: constraint_counts["not_null"] += 1
-
-            if canon in ("JSON", "DOCUMENT", "JSONB"):
+            canon = _canonicalize_type(col.data_type)
+            if canon in ("JSON", "JSONB"):
                 special_counts["json"] += 1
-            if canon in ("GEOMETRY",):
+            if canon in ("GEOMETRY", "POINT", "POLYGON"):
                 special_counts["geometry"] += 1
             if canon in ("BLOB", "BYTEA", "CLOB"):
                 special_counts["blob"] += 1
 
-    if total_columns == 0:
-        return {}
-
-    # Score each DB
     results: Dict[str, Any] = {}
     raw_scores: Dict[str, float] = {}
 
-    for dbname, prof in profiles.items():
-      
-        supported_cols = 0
-        for tname, cnt in type_counts.items():
-            if tname in prof["supported_types"]:
-                supported_cols += cnt
-            else:
-                pass
-        type_support_frac = supported_cols / total_columns
+    for db_name, prof in profiles.items():
+        # Type support
+        supported_cols = sum(
+            cnt for tname, cnt in type_counts.items()
+            if _canonicalize_type(tname) in prof["supported_types"]
+        )
+        type_frac = supported_cols / total_columns if total_columns > 0 else 1.0
 
-        # constraint support
+        # Constraint support
         constraint_total = sum(constraint_counts.values())
         if constraint_total == 0:
             constraint_frac = 1.0
         else:
-            supported_constraints = 0
-            if prof.get("supports_fk", False):
-                supported_constraints += constraint_counts["fk"]
-            if prof.get("supports_unique", True):
-                supported_constraints += constraint_counts["unique"]
-            supported_constraints += constraint_counts["pk"]
-            supported_constraints += constraint_counts["not_null"]
-            constraint_frac = supported_constraints / constraint_total if constraint_total > 0 else 1.0
+            supported_constraints = (
+                constraint_counts["pk"] +          
+                (constraint_counts["fk"] if prof.get("supports_fk") else 0) +
+                (constraint_counts["unique"] if prof.get("supports_unique") else 0) +
+                constraint_counts["not_null"]     
+            )
+            constraint_frac = supported_constraints / constraint_total
 
-        # special features (JSON, GEOMETRY, BLOB)
+        # Special features
         special_total = sum(special_counts.values()) or 1
         special_supported = 0
-        if special_counts["json"] > 0:
-            if prof.get("supports_json_indexing", False) or ("JSON" in prof.get("supported_types", set())):
-                special_supported += special_counts["json"]
-        if special_counts["geometry"] > 0 and ("GEOMETRY" in prof.get("supported_types", set())):
+        if special_counts["json"] > 0 and (
+            "JSON" in prof["supported_types"] or "JSONB" in prof["supported_types"] or
+            prof.get("supports_json_indexing")
+        ):
+            special_supported += special_counts["json"]
+        if special_counts["geometry"] > 0 and "GEOMETRY" in prof["supported_types"]:
             special_supported += special_counts["geometry"]
-        if special_counts["blob"] > 0 and (("BLOB" in prof.get("supported_types", set())) or ("BYTEA" in prof.get("supported_types", set()))):
+        if special_counts["blob"] > 0 and any(t in prof["supported_types"] for t in ("BLOB", "BYTEA")):
             special_supported += special_counts["blob"]
         special_frac = special_supported / special_total
 
-        raw = (weights["type_support"] * type_support_frac +
-               weights["constraint_support"] * constraint_frac +
-               weights["special_support"] * special_frac)
+        raw = (
+            weights["type_support"] * type_frac +
+            weights["constraint_support"] * constraint_frac +
+            weights["special_support"] * special_frac
+        )
 
         explanation = {
-            "type_support_frac": round(type_support_frac, 4),
+            "type_support_frac": round(type_frac, 4),
             "constraint_frac": round(constraint_frac, 4),
             "special_frac": round(special_frac, 4),
             "weights": weights
         }
 
-        raw_scores[dbname] = raw
-        results[dbname] = {
-            "raw_score": raw,
+        raw_scores[db_name] = raw
+        results[db_name] = {
+            "raw_score": round(raw, 4),
             "absolute_pct": round(raw * 100, 2),
             "explanation": explanation
         }
 
-    # Relative percentages
     total_raw = sum(raw_scores.values()) or 1.0
-    for dbname in results:
-        rel = raw_scores[dbname] / total_raw * 100.0
-        results[dbname]["relative_pct"] = round(rel, 2)
+    for db_name in results:
+        rel = (raw_scores[db_name] / total_raw) * 100
+        results[db_name]["relative_pct"] = round(rel, 2)
 
-    sorted_results = dict(sorted(results.items(), key=lambda kv: kv[1]["raw_score"], reverse=True))
+    sorted_results = dict(
+        sorted(results.items(), key=lambda item: item[1]["raw_score"], reverse=True)
+    )
+
     return sorted_results
-
-def _load_parsed_schema_from_json(path: str):
-    """Expect canonical JSON by-table format: { "table_name": { "columns":[{...},...] }, ... }"""
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    tables = []
-    class _C:
-        pass
-    for tname, tdef in data.items():
-        tbl = _C()
-        cols = []
-        for c in tdef.get("columns", []):
-            col = _C()
-            col.data_type = c.get("data_type") or c.get("type") or c.get("column_type") or c.get("dataType")
-            col.constraints = c.get("constraints") or ""
-            col.is_pk = c.get("is_pk", False)
-            col.is_fk = c.get("is_fk", False)
-            col.nullable = c.get("nullable", True)
-            col.comment = c.get("comment", "")
-            cols.append(col)
-        tbl.columns = cols
-        tbl.table_name = tname
-        tables.append(tbl)
-    return tables
-
-def main(argv=None):
-    ap = argparse.ArgumentParser(description="Score parsed schema against DB profiles (JSON)")
-    ap.add_argument("--parsed", "-p", required=True, help="Parsed canonical schema JSON (by-table dict)")
-    ap.add_argument("--db-features", "-d", default="data/db_features.json", help="DB features JSON path")
-    ap.add_argument("--out", "-o", help="Optional scoring output JSON path")
-    args = ap.parse_args(argv)
-
-    tables = _load_parsed_schema_from_json(args.parsed)
-    results = score_schema(tables, db_features_path=args.db_features)
-    print(json.dumps(results, indent=2))
-    if args.out:
-        with open(args.out, "w", encoding="utf-8") as f:
-            json.dump(results, f, indent=2)
-        print(f"Wrote scoring results to {args.out}")
-
-if __name__ == "__main__":
-    main()
