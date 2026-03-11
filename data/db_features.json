@@ -7,7 +7,7 @@
     "supports_json_indexing": true,
     "supports_partitioning": true,
     "supports_stored_procs": true,
-    "max_varchar_len": null,
+    "varchar_max_length": null,
     "notes": "Postgres with PostGIS"
   },
 
@@ -19,7 +19,7 @@
     "supports_json_indexing": false,
     "supports_partitioning": true,
     "supports_stored_procs": true,
-    "max_varchar_len": 65535,
+    "varchar_max_length": 65535,
     "notes": "MySQL (InnoDB)"
   },
 
@@ -31,7 +31,7 @@
     "supports_json_indexing": false,
     "supports_partitioning": false,
     "supports_stored_procs": false,
-    "max_varchar_len": null,
+    "varchar_max_length": null,
     "notes": "SQLite"
   },
 
@@ -43,19 +43,19 @@
     "supports_json_indexing": false,
     "supports_partitioning": true,
     "supports_stored_procs": true,
-    "max_varchar_len": 4000,
+    "varchar_max_length": 10,
     "notes": "Oracle DB"
   },
 
   "MongoDB": {
-    "supported_types": ["DOCUMENT", "JSON"],
+    "supported_types": ["DOCUMENT", "JSON", "String", "Number", "ObjectId", "Date", "Boolean", "Object"],
     "supports_fk": false,
     "supports_unique": true,
     "supports_check": false,
     "supports_json_indexing": true,
     "supports_partitioning": true,
     "supports_stored_procs": false,
-    "max_varchar_len": null,
+    "varchar_max_length": null,
     "notes": "MongoDB (document store)"
   }
 }

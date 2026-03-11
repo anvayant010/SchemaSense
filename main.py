@@ -9,7 +9,6 @@ from core.scorer import score_schema
 
 
 def print_schema_human_readable(schema: ParsedSchema):
-    """Print a clean, readable view of the parsed schema"""
     print("\n" + "=" * 70)
     print("Parsed Schema Overview")
     print("=" * 70)
@@ -22,25 +21,29 @@ def print_schema_human_readable(schema: ParsedSchema):
         print(f"\nTable: {table.name}")
         print("-" * 60)
         for col in table.columns:
+            type_display = col.data_type
+            if col.length is not None:
+                type_display += f"({col.length})"
+            elif col.precision is not None and col.scale is not None:
+                type_display += f"({col.precision},{col.scale})"
+            elif col.precision is not None:
+                type_display += f"({col.precision})"
+
             flags = []
-            if col.is_primary_key:
-                flags.append("PK")
+            if col.is_primary_key: flags.append("PK")
             if col.is_foreign_key:
                 ref = col.references or {}
-                flags.append(f"FK → {ref.get('table', '?')}.{ref.get('column', '?')}")
-            if col.is_unique:
-                flags.append("UNIQUE")
-            if not col.nullable:
-                flags.append("NOT NULL")
-            if col.default is not None:
-                flags.append(f"DEFAULT {col.default}")
+                flags.append(f"FK→{ref.get('table','?')}.{ref.get('column','?')}")
+            if col.is_unique: flags.append("UNIQUE")
+            if not col.nullable: flags.append("NOT NULL")
+            if col.default is not None: flags.append(f"DEFAULT {col.default}")
             
             flags_str = " | ".join(flags) if flags else "—"
             constraints_extra = ", ".join(col.constraints) if col.constraints else ""
             if constraints_extra and constraints_extra != flags_str:
                 flags_str += f"  ({constraints_extra})"
             
-            print(f"  • {col.name:25} {col.data_type:15}  [{flags_str}]")
+            print(f"  • {col.name:25} {type_display:20}  [{flags_str}]")
         print()
 
 
@@ -142,8 +145,13 @@ def main():
                 sfrac = expl.get("special_frac", "?")
 
                 print(f"{db_name:18} {abs_pct:5.1f}% abs  |  {rel_pct:5.1f}% rel")
-                print(f"   Types: {tfrac:>5} | Constraints: {cfrac:>5} | Special: {sfrac:>5}")
-                print()
+                expl = info["explanation"]
+                type_str = f"Types: {expl['type_support_frac']:.4f}"
+                if expl.get("type_violations", 0) > 0:
+                    type_str += f" (after penalty) | type_violations: {expl['type_violations']}"
+                print(type_str)
+    
+                print(f"Constraints: {expl['constraint_frac']:.4f}  | Special: {expl['special_frac']:.4f}\n")
 
             if args.score_out:
                 score_path = Path(args.score_out)
@@ -157,7 +165,6 @@ def main():
 
 
     print("\nDone.\n")
-
 
 if __name__ == "__main__":
     main()

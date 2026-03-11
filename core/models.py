@@ -6,52 +6,40 @@ from collections import Counter
 
 
 class Column(BaseModel):
-    """
-    Represents a single column in a table.
-    All fields are normalized / cleaned by the parser.
-    """
-    name: str = Field(..., description="Column name (normalized: lowercase, no quotes)")
-    data_type: str = Field(..., description="Normalized data type e.g. 'INT', 'VARCHAR', 'JSONB', 'TEXT'")
+    """Represents a single column with full type details."""
+    name: str = Field(..., description="Normalized column name")
+    data_type: str = Field(..., description="Normalized base type e.g. 'VARCHAR', 'INT', 'JSONB'")
+    
     raw_type: Optional[str] = Field(None, description="Original type string from input")
-    length: Optional[int] = Field(None, description="Length for string types e.g. 255")
-    precision: Optional[int] = None
-    scale: Optional[int] = None
+    length: Optional[int] = Field(None, description="For VARCHAR(255), TEXT, etc.")
+    precision: Optional[int] = Field(None, description="For DECIMAL(10,2) → 10")
+    scale: Optional[int] = Field(None, description="For DECIMAL(10,2) → 2")
+    
+    nullable: bool = Field(True)
+    default: Optional[Any] = None
 
-    nullable: bool = Field(True, description="Can this column contain NULL?")
-    default: Optional[Any] = Field(None, description="Default value expression if any")
+    is_primary_key: bool = False
+    is_foreign_key: bool = False
+    is_unique: bool = False
 
-    is_primary_key: bool = Field(False)
-    is_foreign_key: bool = Field(False)
-    is_unique: bool = Field(False)
-
-    references: Optional[Dict[str, str]] = Field(
-        None,
-        description="For foreign keys: {'table': 'departments', 'column': 'id'}"
-    )
-
-    constraints: List[str] = Field(
-        default_factory=list,
-        description="Raw constraint strings e.g. ['NOT NULL', 'CHECK (age > 0)']"
-    )
+    references: Optional[Dict[str, str]] = Field(None, description="{'table': '...', 'column': '...'}")
+    constraints: List[str] = Field(default_factory=list)
 
     @computed_field
     @property
     def constraint_summary(self) -> str:
         parts = []
-        if self.is_primary_key:
-            parts.append("PK")
+        if self.is_primary_key: parts.append("PK")
         if self.is_foreign_key:
-            parts.append(f"FK→{self.references.get('table','?')}.{self.references.get('column','?')}" if self.references else "FK")
-        if self.is_unique:
-            parts.append("UNIQUE")
-        if not self.nullable:
-            parts.append("NOT NULL")
-        if self.default is not None:
-            parts.append(f"DEFAULT {self.default}")
+            ref = self.references or {}
+            parts.append(f"FK→{ref.get('table','?')}.{ref.get('column','?')}")
+        if self.is_unique: parts.append("UNIQUE")
+        if not self.nullable: parts.append("NOT NULL")
+        if self.default is not None: parts.append(f"DEFAULT {self.default}")
         return " | ".join(parts) or "—"
 
     class Config:
-        extra = "forbid"  
+        extra = "forbid" 
 
 
 class Table(BaseModel):

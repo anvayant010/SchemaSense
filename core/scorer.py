@@ -1,9 +1,9 @@
 from __future__ import annotations
 import json
-import re
 from typing import Dict, Any, Tuple
+import re
 
-from core.models import ParsedSchema, Column
+from core.models import ParsedSchema
 
 DEFAULT_WEIGHTS = {
     "type_support": 0.60,
@@ -11,45 +11,62 @@ DEFAULT_WEIGHTS = {
     "special_support": 0.15
 }
 
-_type_regex = re.compile(r"^([a-zA-Z0-9_]+)\s*(?:\(\s*([0-9]+)\s*(?:,\s*([0-9]+)\s*)?\))?$")
-
 CANONICAL_TYPE_MAP = {
-    "INT": "INT", "INTEGER": "INT", "SMALLINT": "SMALLINT", "BIGINT": "BIGINT",
-    "NUMBER": "DECIMAL", "NUMERIC": "DECIMAL", "DECIMAL": "DECIMAL",
-    "FLOAT": "FLOAT", "DOUBLE": "DOUBLE", "REAL": "FLOAT",
-    "VARCHAR": "VARCHAR", "VARCHAR2": "VARCHAR", "NVARCHAR": "VARCHAR", "NVARCHAR2": "VARCHAR",
-    "CHAR": "CHAR", "CHARACTER": "CHAR", "TEXT": "TEXT", "CLOB": "CLOB",
-    "BLOB": "BLOB", "BYTEA": "BLOB",
-    "DATE": "DATE", "TIMESTAMP": "TIMESTAMP", "DATETIME": "TIMESTAMP", "TIME": "TIME",
-    "JSON": "JSON", "JSONB": "JSON", "JSON[]": "JSON",
-    "BOOLEAN": "BOOLEAN", "BOOL": "BOOLEAN",
+    "INT": "INT", "INTEGER": "INT", "INT4": "INT", "MEDIUMINT": "INT", "SERIAL": "INT",
+    "SMALLINT": "SMALLINT", "INT2": "SMALLINT", "TINYINT": "TINYINT",
+    "BIGINT": "BIGINT", "INT8": "BIGINT", "BIGSERIAL": "BIGINT", "LONG": "BIGINT",
+    
+    "DECIMAL": "DECIMAL", "NUMERIC": "DECIMAL", "NUMBER": "DECIMAL", "MONEY": "MONEY",
+    "FLOAT": "FLOAT", "REAL": "FLOAT", "DOUBLE": "DOUBLE", "DOUBLE PRECISION": "DOUBLE",
+    "FLOAT8": "DOUBLE",
+    
+    "VARCHAR": "VARCHAR", "CHARACTER VARYING": "VARCHAR", "VARCHAR2": "VARCHAR",
+    "NVARCHAR": "VARCHAR", "NVARCHAR2": "VARCHAR", "STRING": "VARCHAR",
+    "CHAR": "CHAR", "CHARACTER": "CHAR", "BPCHAR": "CHAR",
+    "TEXT": "TEXT", "CLOB": "CLOB", "LONGTEXT": "TEXT", "MEDIUMTEXT": "TEXT",
+    
+    "BLOB": "BLOB", "BYTEA": "BLOB", "VARBINARY": "BLOB", "BINARY": "BLOB",
+    
+    "DATE": "DATE",
+    "TIMESTAMP": "TIMESTAMP", "DATETIME": "TIMESTAMP", "TIMESTAMPTZ": "TIMESTAMPTZ",
+    "TIMESTAMP WITH TIME ZONE": "TIMESTAMPTZ", "TIMETZ": "TIMETZ",
+    
+    "JSON": "JSON", "JSONB": "JSONB", "JSON[]": "JSON", "OBJECT": "JSON", "DOCUMENT": "JSON",
+    "BOOLEAN": "BOOLEAN", "BOOL": "BOOLEAN", "BIT": "BOOLEAN",
     "UUID": "UUID",
     "GEOMETRY": "GEOMETRY", "POINT": "GEOMETRY", "POLYGON": "GEOMETRY",
     "ARRAY": "ARRAY",
 }
+TYPE_ALIASES = {
+    "VARCHAR": {"VARCHAR", "VARCHAR2", "CHARACTER VARYING", "STRING", "TEXT"},
+    "INT": {"INT", "INTEGER", "NUMBER", "SMALLINT", "BIGINT", "TINYINT"},
+    "DECIMAL": {"DECIMAL", "NUMERIC", "NUMBER"},
+    "TEXT": {"TEXT", "CLOB", "LONGTEXT", "MEDIUMTEXT"},
+    "JSON": {"JSON", "JSONB", "DOCUMENT", "OBJECT"},
+    "BLOB": {"BLOB", "BYTEA", "BINARY", "VARBINARY"},
+}
 
-def _parse_type(type_str: str | None) -> Tuple[str, int]:
-    """Parse type string → (base_type_upper, length_or_precision_or_0)"""
+def _parse_and_canonicalize_type(type_str: str | None) -> tuple[str, int | None, int | None, int | None]:
+    """Parse type string → (canonical_type, length, precision, scale)"""
     if not type_str:
-        return "TEXT", 0
+        return "TEXT", None, None, None
+    
     s = str(type_str).strip().upper()
-    m = _type_regex.match(s)
-    if not m:
-        return s, 0
-    base = m.group(1)
-    length_str = m.group(2)
-    length = int(length_str) if length_str else 0
-    return base, length
-
-
-def _canonicalize_type(base_type: str) -> str:
-    """Map to canonical type name"""
-    b = base_type.upper()
-    return CANONICAL_TYPE_MAP.get(b, b)
+    
+    match = re.match(r"^([A-Z0-9_]+)(?:\s*\(\s*(\d+)(?:\s*,\s*(\d+))?\s*\))?", s)
+    if not match:
+        return s, None, None, None
+    
+    base = match.group(1)
+    length = int(match.group(2)) if match.group(2) else None
+    precision = int(match.group(2)) if match.group(2) and match.group(3) else None
+    scale = int(match.group(3)) if match.group(3) else None
+    
+    canon = CANONICAL_TYPE_MAP.get(base, base)
+    return canon, length, precision, scale
 
 
 def _load_db_profiles(path: str) -> Dict[str, Dict[str, Any]]:
-    """Load and normalize database capability profiles"""
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -58,6 +75,7 @@ def _load_db_profiles(path: str) -> Dict[str, Dict[str, Any]]:
         p = dict(prof)
         supp = prof.get("supported_types", [])
         p["supported_types"] = {str(x).strip().upper() for x in supp}
+        
         defaults = {
             "supports_fk": False,
             "supports_unique": True,
@@ -65,9 +83,12 @@ def _load_db_profiles(path: str) -> Dict[str, Dict[str, Any]]:
             "supports_json_indexing": False,
             "supports_partitioning": False,
             "supports_stored_procs": False,
+            "varchar_max_length": None,    
+            "decimal_max_precision": None,
         }
         for k, default in defaults.items():
             p.setdefault(k, default)
+        
         profiles[db_name] = p
     return profiles
 
@@ -80,7 +101,7 @@ def score_schema(
 ) -> Dict[str, Any]:
     """
     Score the schema against all known databases.
-    Returns sorted dict of {db_name: {absolute_pct, relative_pct, explanation, raw_score}}
+    Returns sorted dict: {db_name: {raw_score, absolute_pct, relative_pct, explanation}}
     """
     if type_map is None:
         type_map = CANONICAL_TYPE_MAP
@@ -92,30 +113,23 @@ def score_schema(
 
     profiles = _load_db_profiles(db_features_path)
 
-    type_counts: Dict[str, int] = schema.type_distribution 
     total_columns = schema.total_columns
-
     constraint_counts = {
         "pk": schema.primary_keys_count,
         "fk": schema.foreign_keys_count,
-        "unique": 0,         
+        "unique": 0,
         "not_null": 0,
     }
-    special_counts = {
-        "json": 0,
-        "geometry": 0,
-        "blob": 0,
-    }
+    special_counts = {"json": 0, "geometry": 0, "blob": 0}
 
     for table in schema.tables:
         for col in table.columns:
-            if col.is_unique or "UNIQUE" in [c.upper() for c in col.constraints]:
+            if col.is_unique or any("UNIQUE" in c.upper() for c in col.constraints):
                 constraint_counts["unique"] += 1
-
             if not col.nullable:
                 constraint_counts["not_null"] += 1
 
-            canon = _canonicalize_type(col.data_type)
+            canon, _, _, _ = _parse_and_canonicalize_type(col.raw_type or col.data_type)
             if canon in ("JSON", "JSONB"):
                 special_counts["json"] += 1
             if canon in ("GEOMETRY", "POINT", "POLYGON"):
@@ -123,36 +137,63 @@ def score_schema(
             if canon in ("BLOB", "BYTEA", "CLOB"):
                 special_counts["blob"] += 1
 
-    results: Dict[str, Any] = {}
-    raw_scores: Dict[str, float] = {}
+    results = {}
+    raw_scores = {}
 
     for db_name, prof in profiles.items():
-        # Type support
-        supported_cols = sum(
-            cnt for tname, cnt in type_counts.items()
-            if _canonicalize_type(tname) in prof["supported_types"]
-        )
+        supported_cols = 0
+        type_violations = 0
+
+        for table in schema.tables:
+            for col in table.columns:
+                input_type = col.raw_type if col.raw_type else col.data_type
+                canon, length, precision, scale = _parse_and_canonicalize_type(input_type)
+
+                def is_type_supported(canon: str, supported: set) -> bool:
+                    if canon in supported:
+                        return True
+                    aliases = TYPE_ALIASES.get(canon, set())
+                    return any(alias in supported for alias in aliases)
+
+                is_supported = is_type_supported(canon, prof["supported_types"])
+
+                if is_supported and length is not None:
+                    max_len_key = f"{canon.lower()}_max_length"
+                    max_len = prof.get(max_len_key)
+                    if max_len is not None and length > max_len:
+                        is_supported = False
+                        type_violations += 1
+
+                if is_supported and precision is not None:
+                    max_prec_key = f"{canon.lower()}_max_precision"
+                    max_prec = prof.get(max_prec_key)
+                    if max_prec is not None and precision > max_prec:
+                        is_supported = False
+                        type_violations += 1
+
+                if is_supported:
+                    supported_cols += 1
+
         type_frac = supported_cols / total_columns if total_columns > 0 else 1.0
 
-        # Constraint support
-        constraint_total = sum(constraint_counts.values())
-        if constraint_total == 0:
-            constraint_frac = 1.0
-        else:
-            supported_constraints = (
-                constraint_counts["pk"] +          
-                (constraint_counts["fk"] if prof.get("supports_fk") else 0) +
-                (constraint_counts["unique"] if prof.get("supports_unique") else 0) +
-                constraint_counts["not_null"]     
-            )
-            constraint_frac = supported_constraints / constraint_total
+        if type_violations > 0:
+            penalty = min(0.4, type_violations * 0.08)  
+            type_frac *= (1 - penalty)
+            type_frac = max(0.0, type_frac)
 
-        # Special features
+        constraint_total = sum(constraint_counts.values())
+        constraint_frac = 1.0 if constraint_total == 0 else (
+            constraint_counts["pk"] +
+            (constraint_counts["fk"] if prof.get("supports_fk", False) else 0) +
+            (constraint_counts["unique"] if prof.get("supports_unique", True) else 0) +
+            constraint_counts["not_null"]
+        ) / constraint_total
+
         special_total = sum(special_counts.values()) or 1
         special_supported = 0
         if special_counts["json"] > 0 and (
             "JSON" in prof["supported_types"] or "JSONB" in prof["supported_types"] or
-            prof.get("supports_json_indexing")
+            prof.get("supports_json_indexing", False)
         ):
             special_supported += special_counts["json"]
         if special_counts["geometry"] > 0 and "GEOMETRY" in prof["supported_types"]:
@@ -169,6 +210,7 @@ def score_schema(
 
         explanation = {
             "type_support_frac": round(type_frac, 4),
+            "type_violations": type_violations,
             "constraint_frac": round(constraint_frac, 4),
             "special_frac": round(special_frac, 4),
             "weights": weights

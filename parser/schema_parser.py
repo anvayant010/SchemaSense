@@ -8,8 +8,9 @@ from pathlib import Path
 import re
 
 from core.models import ParsedSchema, Table, Column
+from core.scorer import _parse_and_canonicalize_type
 
-import sqlglot  # kept for potential future use
+import sqlglot  
 from sqlglot import exp
 
 
@@ -101,14 +102,19 @@ class SchemaParser:
                 }
 
             # Create proper Pydantic Column
+            canon_type, length, precision, scale = _parse_and_canonicalize_type(data_type)  
+
             column = Column(
                 name=col_name,
-                data_type=data_type,
-                raw_type=data_type,
+                data_type=canon_type,          
+                raw_type=data_type,            
+                length=length,
+                precision=precision,
+                scale=scale,
                 nullable=nullable,
                 is_primary_key=is_pk,
                 is_foreign_key=is_fk,
-                is_unique=False,  # can be extended later
+                is_unique=False,               
                 references=references,
                 constraints=[constraints_text] if constraints_text else []
             )
