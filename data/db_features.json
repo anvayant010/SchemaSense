@@ -43,7 +43,7 @@
     "supports_json_indexing": false,
     "supports_partitioning": true,
     "supports_stored_procs": true,
-    "varchar_max_length": 10,
+    "varchar_max_length": 4000,
     "notes": "Oracle DB"
   },
 

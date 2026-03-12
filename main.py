@@ -136,22 +136,25 @@ def main():
             print("Database Suitability Ranking")
             print("=" * 70)
 
-            for db_name, info in sorted(scoring_results.items(), key=lambda x: x[1].get("absolute_pct", 0), reverse=True):
+            for db_name, info in scoring_results.items():
                 abs_pct = info.get("absolute_pct", 0)
                 rel_pct = info.get("relative_pct", 0)
-                expl = info.get("explanation", {})
-                tfrac = expl.get("type_support_frac", "?")
-                cfrac = expl.get("constraint_frac", "?")
-                sfrac = expl.get("special_frac", "?")
+                expl = info.get("explanation", {})  
 
                 print(f"{db_name:18} {abs_pct:5.1f}% abs  |  {rel_pct:5.1f}% rel")
-                expl = info["explanation"]
-                type_str = f"Types: {expl['type_support_frac']:.4f}"
+
+                type_str = f"   Types: {expl.get('type_support_frac', 0):.4f}"
                 if expl.get("type_violations", 0) > 0:
                     type_str += f" (after penalty) | type_violations: {expl['type_violations']}"
                 print(type_str)
-    
-                print(f"Constraints: {expl['constraint_frac']:.4f}  | Special: {expl['special_frac']:.4f}\n")
+
+                print(f"   Constraints: {expl.get('constraint_frac', 0):.4f}  | Special: {expl.get('special_frac', 0):.4f}")
+
+                print("   Migration Warnings:")
+                warnings = expl.get("migration_warnings", ["No major migration blockers"])
+                for w in warnings:
+                    print(f"      {w}")
+                print()
 
             if args.score_out:
                 score_path = Path(args.score_out)

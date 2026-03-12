@@ -93,6 +93,47 @@ def _load_db_profiles(path: str) -> Dict[str, Dict[str, Any]]:
     return profiles
 
 
+def generate_migration_warnings(
+    schema: ParsedSchema,
+    prof: dict,
+    explanation: dict,
+    db_name: str
+) -> list[str]:
+    """
+    Generate human-readable migration warnings for a specific database.
+    """
+    warnings = []
+
+    violations = explanation.get("type_violations", 0)
+    if violations > 0:
+        if db_name in ("Oracle", "MySQL"):
+            warnings.append(f"• {violations} VARCHAR columns exceed max length — truncate or use CLOB/TEXT")
+        else:
+            warnings.append(f"• {violations} columns have type/length issues")
+
+    fk_count = schema.foreign_keys_count
+    if fk_count > 0:
+        if not prof.get("supports_fk", False):
+            warnings.append(f"• {fk_count} Foreign Keys — not natively enforced (use app-level validation)")
+        elif db_name == "SQLite":
+            warnings.append("• Foreign Keys are disabled by default — add PRAGMA foreign_keys = ON")
+
+    if explanation.get("special_frac", 0) < 0.5 and schema.has_advanced_types:
+        warnings.append("• Advanced types (JSON/ARRAY/GEOMETRY) — limited support or requires extension")
+
+    # messages
+    if db_name in ("PostgreSQL", "MySQL") and violations == 0:
+        warnings.append("✓ Ready to migrate with minimal or zero changes")
+    elif db_name == "MongoDB":
+        warnings.append("• Schema-less DB — all FKs and constraints must be enforced in application code")
+    elif db_name == "SQLite":
+        warnings.append("• Good for embedded use — but limited ALTER TABLE and concurrency")
+
+    if not warnings:
+        warnings.append("✓ Excellent fit — no major migration blockers detected")
+
+    return warnings
+
 def score_schema(
     schema: ParsedSchema,
     db_features_path: str = "data/db_features.json",
@@ -207,7 +248,6 @@ def score_schema(
             weights["constraint_support"] * constraint_frac +
             weights["special_support"] * special_frac
         )
-
         explanation = {
             "type_support_frac": round(type_frac, 4),
             "type_violations": type_violations,
@@ -222,6 +262,10 @@ def score_schema(
             "absolute_pct": round(raw * 100, 2),
             "explanation": explanation
         }
+        migration_warnings = generate_migration_warnings(
+            schema, prof, explanation, db_name
+        )
+        explanation["migration_warnings"] = migration_warnings
 
     total_raw = sum(raw_scores.values()) or 1.0
     for db_name in results:
