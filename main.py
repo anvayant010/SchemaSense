@@ -6,6 +6,7 @@ from pathlib import Path
 from parser.schema_parser import SchemaParser
 from core.models import ParsedSchema
 from core.scorer import score_schema   
+from core.schema_graph import SchemaGraph
 
 
 def print_schema_human_readable(schema: ParsedSchema):
@@ -101,6 +102,19 @@ def main():
             dialect=args.dialect
         )
         schema: ParsedSchema = schema_parser.parse()
+        graph_engine = SchemaGraph(schema)
+        graph_engine.build_graph()
+
+        print("\nSchema Graph Metrics")
+        print("-" * 40)
+
+        print("Dependency depth:", graph_engine.dependency_depth())
+        print("Join density:", round(graph_engine.join_density(), 3))
+
+        cycles = graph_engine.detect_cycles()
+        print("Cycles:", cycles if cycles else "None")
+
+        print("Migration order:", graph_engine.migration_order())
     except FileNotFoundError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
