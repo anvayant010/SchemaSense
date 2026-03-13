@@ -4,6 +4,11 @@ from typing import List, Optional, Literal, Dict, Any, Set
 from pydantic import BaseModel, Field, computed_field, model_validator
 from collections import Counter
 
+class Index(BaseModel):
+    name: str
+    table: str
+    columns: List[str]
+    unique: bool = False
 
 class Column(BaseModel):
     """Represents a single column with full type details."""
@@ -82,6 +87,7 @@ class ParsedSchema(BaseModel):
     tables: List[Table] = Field(default_factory=list)
     source_format: Literal["csv", "sql", "json", "unknown"] = "unknown"
     source_file: Optional[str] = None
+    indexes: List[Index] = Field(default_factory=list)
 
     # Computed summary fields
     @computed_field

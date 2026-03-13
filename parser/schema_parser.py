@@ -7,7 +7,7 @@ from typing import List, Dict, Optional
 from pathlib import Path
 import re
 
-from core.models import ParsedSchema, Table, Column
+from core.models import ParsedSchema, Table, Column, Index
 from core.scorer import _parse_and_canonicalize_type
 
 import sqlglot  
@@ -101,7 +101,6 @@ class SchemaParser:
                     "column": ref_column.strip()
                 }
 
-            # Create proper Pydantic Column
             canon_type, length, precision, scale = _parse_and_canonicalize_type(data_type)  
 
             column = Column(
@@ -121,7 +120,6 @@ class SchemaParser:
 
             tables_dict.setdefault(tname, []).append(column)
 
-        # Build Table objects
         tables = [
             Table(name=table_name, columns=columns)
             for table_name, columns in tables_dict.items()
@@ -178,98 +176,149 @@ class SchemaParser:
 
     # ------------------- SQL Parser -------------------
     def _parse_sql(self) -> ParsedSchema:
+
         path = Path(self.input_file)
+
         if not path.exists():
             raise FileNotFoundError(f"SQL file not found: {self.input_file}")
 
         sql_text = path.read_text(encoding="utf-8")
-        tables: List[Table] = []
 
-        # Keeping your regex-based approach for now (can upgrade to sqlglot later)
-        create_table_regex = re.compile(
-            r"CREATE\s+TABLE\s+([`\"\[\]\w]+)\s*\((.*?)\);",
-            flags=re.IGNORECASE | re.DOTALL
-        )
+        tables = []
+        indexes = []
 
-        def split_columns(block: str) -> List[str]:
-            cols = []
-            cur = []
-            depth = 0
-            for ch in block:
-                if ch == "(":
-                    depth += 1
-                    cur.append(ch)
-                elif ch == ")":
-                    depth = max(depth - 1, 0)
-                    cur.append(ch)
-                elif ch == "," and depth == 0:
-                    s = "".join(cur).strip()
-                    if s:
-                        cols.append(s)
-                    cur = []
-                else:
-                    cur.append(ch)
-            last = "".join(cur).strip()
-            if last:
-                cols.append(last)
-            return cols
+        parsed_statements = sqlglot.parse(sql_text)
 
-        for m in create_table_regex.finditer(sql_text):
-            tname = m.group(1).strip("`\"[]")
-            inner = m.group(2)
-            col_texts = split_columns(inner)
-            columns: List[Column] = []
+        # print("Parsed statements:")
+        # for s in parsed_statements:
+        #     print(type(s), s.sql())
 
-            for ctext in col_texts:
-                ctext = ctext.strip()
-                if re.match(r"^(PRIMARY|FOREIGN|UNIQUE|CONSTRAINT|CHECK)\b", ctext, flags=re.IGNORECASE):
-                    continue
+        for stmt in parsed_statements:
 
-                parts = ctext.split(None, 1)
-                if not parts:
-                    continue
+            # ---------------- TABLE PARSING ----------------
+            if isinstance(stmt, exp.Create) and stmt.args.get("kind") == "TABLE":
 
-                cname = parts[0].strip("`\"[]")
-                rest = parts[1] if len(parts) > 1 else ""
-                tmatch = re.match(r"^([A-Za-z0-9_]+(\s*\([^\)]*\))?)", rest)
-                dtype = tmatch.group(1).strip().upper() if tmatch else "TEXT"
-                cons_txt = rest[len(tmatch.group(0)) if tmatch else 0:].strip()
+                table_name = stmt.this.sql().replace("`", "").replace('"', "")
+                columns = []
 
-                is_pk = bool(re.search(r"\bPRIMARY\s+KEY\b", cons_txt, flags=re.IGNORECASE))
-                is_fk = bool(re.search(r"\bREFERENCES\b", cons_txt, flags=re.IGNORECASE))
-                nullable = not bool(re.search(r"\bNOT\s+NULL\b", cons_txt, flags=re.IGNORECASE))
+                columns_ast = list(stmt.find_all(exp.ColumnDef))
 
-                refm = re.search(
-                    r"REFERENCES\s+([`\"\[\]\w]+)\s*\(\s*([`\"\[\]\w]+)\s*\)",
-                    cons_txt,
-                    flags=re.IGNORECASE
+                for col in columns_ast:
+
+                    col_name = col.name
+
+                    col_type = "TEXT"
+                    if col.args.get("kind"):
+                        col_type = col.args["kind"].sql()
+
+                    canon_type, length, precision, scale = _parse_and_canonicalize_type(col_type)
+
+                    nullable = True
+                    is_pk = False
+                    is_unique = False
+                    is_fk = False
+                    references = None
+                    default = None
+
+                    constraints = []
+
+                    for c in col.args.get("constraints", []):
+
+                        if isinstance(c, exp.ColumnConstraint):
+                            if isinstance(c.kind, exp.PrimaryKeyColumnConstraint):
+                                is_pk = True
+                                nullable = False
+                            elif isinstance(c.kind, exp.NotNullColumnConstraint):
+                                nullable = False
+                            elif isinstance(c.kind, exp.UniqueColumnConstraint):
+                                is_unique = True
+                            elif isinstance(c.kind, exp.DefaultColumnConstraint):
+                                default = c.this.sql()
+                        elif isinstance(c, (exp.PrimaryKeyColumnConstraint, exp.PrimaryKey)):
+                            is_pk = True
+                            nullable = False
+                        elif isinstance(c, exp.NotNullColumnConstraint):
+                            nullable = False
+                        elif isinstance(c, exp.UniqueColumnConstraint):
+                            is_unique = True
+                        elif isinstance(c, exp.DefaultColumnConstraint):
+                            default = c.this.sql()
+
+                        constraints.append(c.sql())
+                        
+
+                    column = Column(
+                        name=col_name,
+                        data_type=canon_type,
+                        raw_type=col_type,
+                        length=length,
+                        precision=precision,
+                        scale=scale,
+                        nullable=nullable,
+                        is_primary_key=is_pk,
+                        is_foreign_key=is_fk,
+                        is_unique=is_unique,
+                        references=references,
+                        constraints=constraints,
+                        default=default
+                    )
+
+                    columns.append(column)
+
+                # Parse foreign keys after all columns are added
+                for fk in stmt.find_all(exp.ForeignKey):
+                    # fk.expressions contains the FK columns
+                    fk_columns = [e.name for e in fk.expressions]
+                    
+                    # fk.args['reference'] contains the referenced table and columns
+                    ref = fk.args.get('reference')
+                    if ref and ref.this and ref.this.expressions:
+                        ref_table = ref.this.this.this.name if ref.this.this and ref.this.this.this else None
+                        ref_columns = [e.name for e in ref.this.expressions]
+                        
+                        # For simplicity, assume single column FK
+                        if fk_columns and ref_columns and ref_table:
+                            fk_column = fk_columns[0]
+                            ref_column = ref_columns[0]
+                            
+                            for col in columns:
+                                if col.name == fk_column:
+                                    col.is_foreign_key = True
+                                    col.references = {
+                                        "table": ref_table,
+                                        "column": ref_column
+                                    }
+                                    break
+
+                tables.append(Table(name=table_name, columns=columns))
+                
+
+            # ---------------- INDEX PARSING ----------------
+            if isinstance(stmt, exp.Create) and isinstance(stmt.this, exp.Index):
+
+                index_name = stmt.this.name
+                table = stmt.args.get("table")
+
+                table_name = table.name if table else None
+
+                cols = []
+                for e in stmt.this.expressions:
+                    cols.append(e.name)
+
+                indexes.append(
+                    Index(
+                        name=index_name,
+                        table=table_name,
+                        columns=cols,
+                        unique=stmt.args.get("unique", False)
+                    )
                 )
-                references = None
-                if refm:
-                    references = {
-                        "table": refm.group(1).strip("`\"[]"),
-                        "column": refm.group(2).strip("`\"[]")
-                    }
-
-                column = Column(
-                    name=cname,
-                    data_type=dtype,
-                    raw_type=dtype,
-                    nullable=nullable,
-                    is_primary_key=is_pk,
-                    is_foreign_key=is_fk,
-                    references=references,
-                    constraints=[cons_txt] if cons_txt else []
-                )
-                columns.append(column)
-
-            if columns:
-                tables.append(Table(name=tname, columns=columns))
 
         return ParsedSchema(
             tables=tables,
             source_format="sql",
-            source_file=self.input_file
+            source_file=self.input_file,
+            indexes=indexes
         )
 
 
