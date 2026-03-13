@@ -265,18 +265,14 @@ class SchemaParser:
 
                     columns.append(column)
 
-                # Parse foreign keys after all columns are added
                 for fk in stmt.find_all(exp.ForeignKey):
-                    # fk.expressions contains the FK columns
                     fk_columns = [e.name for e in fk.expressions]
                     
-                    # fk.args['reference'] contains the referenced table and columns
                     ref = fk.args.get('reference')
                     if ref and ref.this and ref.this.expressions:
                         ref_table = ref.this.this.this.name if ref.this.this and ref.this.this.this else None
                         ref_columns = [e.name for e in ref.this.expressions]
                         
-                        # For simplicity, assume single column FK
                         if fk_columns and ref_columns and ref_table:
                             fk_column = fk_columns[0]
                             ref_column = ref_columns[0]
