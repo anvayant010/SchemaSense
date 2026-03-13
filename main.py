@@ -7,6 +7,7 @@ from parser.schema_parser import SchemaParser
 from core.models import ParsedSchema
 from core.scorer import score_schema   
 from core.schema_graph import SchemaGraph
+from core.schema_complexity import SchemaComplexityAnalyzer
 
 
 def print_schema_human_readable(schema: ParsedSchema):
@@ -115,6 +116,20 @@ def main():
         print("Cycles:", cycles if cycles else "None")
 
         print("Migration order:", graph_engine.migration_order())
+
+        complexity = SchemaComplexityAnalyzer(schema)
+
+        print("\nSchema Complexity Analysis")
+        print("-" * 40)
+
+        print("Tables:", complexity.table_count())
+        print("Foreign Keys:", complexity.foreign_key_count())
+        print("Join Density:", round(complexity.join_density(), 3))
+        print("Dependency Depth:", complexity.dependency_depth())
+        print("Hub Tables:", complexity.hub_tables() or "None")
+        print("Fanout Tables:", complexity.fanout_tables() or "None")
+        print("Complexity Score:", complexity.complexity_score())
+    
     except FileNotFoundError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
