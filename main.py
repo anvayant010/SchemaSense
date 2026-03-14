@@ -8,6 +8,7 @@ from core.models import ParsedSchema
 from core.scorer import score_schema   
 from core.schema_graph import SchemaGraph
 from core.schema_complexity import SchemaComplexityAnalyzer
+from core.schema_quality import SchemaQualityAnalyzer
 
 
 def print_schema_human_readable(schema: ParsedSchema):
@@ -129,6 +130,16 @@ def main():
         print("Hub Tables:", complexity.hub_tables() or "None")
         print("Fanout Tables:", complexity.fanout_tables() or "None")
         print("Complexity Score:", complexity.complexity_score())
+
+        quality = SchemaQualityAnalyzer(schema)
+
+        print("\nSchema Quality Analysis")
+        print("-" * 40)
+
+        print("Tables without PK:", quality.tables_without_primary_keys() or "None")
+        print("FK without index:", quality.fk_without_index() or "None")
+        print("Weak tables:", quality.weak_tables() or "None")
+        print("Quality score:", quality.quality_score(), "/ 10")
     
     except FileNotFoundError as e:
         print(f"Error: {e}", file=sys.stderr)
