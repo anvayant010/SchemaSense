@@ -9,6 +9,7 @@ from core.scorer import score_schema
 from core.schema_graph import SchemaGraph
 from core.schema_complexity import SchemaComplexityAnalyzer
 from core.schema_quality import SchemaQualityAnalyzer
+from core.migration_risk import MigrationRiskAnalyzer
 
 
 def print_schema_human_readable(schema: ParsedSchema):
@@ -206,7 +207,22 @@ def main():
         except Exception as e:
             print(f"Scoring failed: {type(e).__name__}: {e}", file=sys.stderr)
 
+    risk = MigrationRiskAnalyzer(schema)
 
+    print("\nMigration Risk Analysis")
+    print("-" * 40)
+
+    print("Risk Score:", risk.risk_score())
+    print("Risk Level:", risk.risk_level())
+
+    factors = risk.risk_factors()
+
+    if factors:
+        print("Risk Factors:")
+        for f in factors:
+            print(" •", f)
+    else:
+        print("Risk Factors: None")
     print("\nDone.\n")
 
 if __name__ == "__main__":
