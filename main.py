@@ -10,6 +10,7 @@ from core.schema_graph import SchemaGraph
 from core.schema_complexity import SchemaComplexityAnalyzer
 from core.schema_quality import SchemaQualityAnalyzer
 from core.migration_risk import MigrationRiskAnalyzer
+from core.migration_planner import MigrationPlanner
 
 
 def print_schema_human_readable(schema: ParsedSchema):
@@ -223,6 +224,26 @@ def main():
             print(" •", f)
     else:
         print("Risk Factors: None")
+
+    planner = MigrationPlanner(schema)
+
+    plan = planner.generate_plan()
+
+    print("\nMigration Plan")
+    print("-" * 40)
+
+    print("Table creation order:")
+    for t in plan["table_creation_order"]:
+        print(" •", t)
+
+    print("\nConstraint steps:")
+    for c in plan["constraint_plan"]:
+        print(" •", c)
+
+    print("\nIndex steps:")
+    for i in plan["index_plan"]:
+        print(" •", i)
+
     print("\nDone.\n")
 
 if __name__ == "__main__":
