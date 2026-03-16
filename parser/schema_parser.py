@@ -184,29 +184,65 @@ class SchemaParser:
 
         sql_text = path.read_text(encoding="utf-8")
 
-        tables = []
+        tables: Dict[str, List[Column]] = {}
         indexes = []
 
-        parsed_statements = sqlglot.parse(sql_text)
+        try:
+            dialect = self.dialect or "mysql"
+            parsed_statements = sqlglot.parse(sql_text, dialect=dialect, error_level=sqlglot.ErrorLevel.WARN)
+        except Exception:
+            parsed_statements = sqlglot.parse(sql_text, error_level=sqlglot.ErrorLevel.WARN)
 
-        # print("Parsed statements:")
-        # for s in parsed_statements:
-        #     print(type(s), s.sql())
+        def _clean_name(raw: str) -> str:
+            """Strip quotes and backticks from identifiers."""
+            return raw.strip().strip("`\"'[]").strip()
+
+        def _extract_fks_from_create(stmt) -> list[dict]:
+            """Extract FK definitions from a CREATE TABLE statement."""
+            fks = []
+            for fk in stmt.find_all(exp.ForeignKey):
+                fk_cols = [_clean_name(e.name) for e in fk.expressions]
+                ref = fk.args.get("reference")
+                if not (ref and ref.this):
+                    continue
+                try:
+                    ref_table_node = ref.this.this
+                    if hasattr(ref_table_node, "this"):
+                        ref_table = _clean_name(ref_table_node.this.name if hasattr(ref_table_node.this, "name") else str(ref_table_node.this))
+                    else:
+                        ref_table = _clean_name(str(ref_table_node))
+                    ref_cols = [_clean_name(e.name) for e in ref.this.expressions]
+                    if fk_cols and ref_cols and ref_table:
+                        for i, fk_col in enumerate(fk_cols):
+                            ref_col = ref_cols[i] if i < len(ref_cols) else ref_cols[0]
+                            fks.append({"fk_col": fk_col, "ref_table": ref_table, "ref_col": ref_col})
+                except Exception:
+                    continue
+            return fks
 
         for stmt in parsed_statements:
+            if stmt is None:
+                continue
 
-            # ---------------- TABLE PARSING ----------------
+            # ---------------- CREATE TABLE ----------------
             if isinstance(stmt, exp.Create) and stmt.args.get("kind") == "TABLE":
+                try:
+                    tbl_node = stmt.this
+                    raw_table_name = tbl_node.name if tbl_node.name else ""
+                    if not raw_table_name and hasattr(tbl_node, "this"):
+                        raw_table_name = tbl_node.this.name if hasattr(tbl_node.this, "name") else str(tbl_node.this)
+                except Exception:
+                    raw_table_name = ""
+                table_name = _clean_name(raw_table_name)
+                if "." in table_name:
+                    table_name = table_name.split(".")[-1].strip()
+                if not table_name:
+                    continue
 
-                table_name = stmt.this.sql().replace("`", "").replace('"', "")
                 columns = []
 
-                columns_ast = list(stmt.find_all(exp.ColumnDef))
-
-                for col in columns_ast:
-
-                    col_name = col.name
-
+                for col in stmt.find_all(exp.ColumnDef):
+                    col_name = _clean_name(col.name)
                     col_type = "TEXT"
                     if col.args.get("kind"):
                         col_type = col.args["kind"].sql()
@@ -219,21 +255,32 @@ class SchemaParser:
                     is_fk = False
                     references = None
                     default = None
-
                     constraints = []
 
                     for c in col.args.get("constraints", []):
-
                         if isinstance(c, exp.ColumnConstraint):
-                            if isinstance(c.kind, exp.PrimaryKeyColumnConstraint):
+                            kind = c.kind
+                            if isinstance(kind, exp.PrimaryKeyColumnConstraint):
                                 is_pk = True
                                 nullable = False
-                            elif isinstance(c.kind, exp.NotNullColumnConstraint):
+                            elif isinstance(kind, exp.NotNullColumnConstraint):
                                 nullable = False
-                            elif isinstance(c.kind, exp.UniqueColumnConstraint):
+                            elif isinstance(kind, exp.UniqueColumnConstraint):
                                 is_unique = True
-                            elif isinstance(c.kind, exp.DefaultColumnConstraint):
-                                default = c.this.sql()
+                            elif isinstance(kind, exp.DefaultColumnConstraint):
+                                try:
+                                    default = c.this.sql()
+                                except Exception:
+                                    default = None
+                            elif isinstance(kind, exp.Reference):
+                                is_fk = True
+                                try:
+                                    ref_tbl = _clean_name(kind.this.this.name if hasattr(kind.this, "this") else str(kind.this))
+                                    ref_cols_expr = kind.this.expressions if hasattr(kind.this, "expressions") else []
+                                    ref_col_name = _clean_name(ref_cols_expr[0].name) if ref_cols_expr else col_name
+                                    references = {"table": ref_tbl, "column": ref_col_name}
+                                except Exception:
+                                    pass
                         elif isinstance(c, (exp.PrimaryKeyColumnConstraint, exp.PrimaryKey)):
                             is_pk = True
                             nullable = False
@@ -241,13 +288,13 @@ class SchemaParser:
                             nullable = False
                         elif isinstance(c, exp.UniqueColumnConstraint):
                             is_unique = True
-                        elif isinstance(c, exp.DefaultColumnConstraint):
-                            default = c.this.sql()
 
-                        constraints.append(c.sql())
-                        
+                        try:
+                            constraints.append(c.sql())
+                        except Exception:
+                            pass
 
-                    column = Column(
+                    columns.append(Column(
                         name=col_name,
                         data_type=canon_type,
                         raw_type=col_type,
@@ -261,57 +308,69 @@ class SchemaParser:
                         references=references,
                         constraints=constraints,
                         default=default
-                    )
+                    ))
 
-                    columns.append(column)
+                for fk_info in _extract_fks_from_create(stmt):
+                    for col in columns:
+                        if col.name == fk_info["fk_col"]:
+                            col.is_foreign_key = True
+                            col.references = {"table": fk_info["ref_table"], "column": fk_info["ref_col"]}
+                            break
 
-                for fk in stmt.find_all(exp.ForeignKey):
-                    fk_columns = [e.name for e in fk.expressions]
-                    
-                    ref = fk.args.get('reference')
-                    if ref and ref.this and ref.this.expressions:
-                        ref_table = ref.this.this.this.name if ref.this.this and ref.this.this.this else None
-                        ref_columns = [e.name for e in ref.this.expressions]
-                        
-                        if fk_columns and ref_columns and ref_table:
-                            fk_column = fk_columns[0]
-                            ref_column = ref_columns[0]
-                            
-                            for col in columns:
-                                if col.name == fk_column:
-                                    col.is_foreign_key = True
-                                    col.references = {
-                                        "table": ref_table,
-                                        "column": ref_column
-                                    }
-                                    break
+                tables[table_name] = columns
 
-                tables.append(Table(name=table_name, columns=columns))
-                
+            elif isinstance(stmt, exp.AlterTable):
+                try:
+                    alter_table_name = _clean_name(stmt.this.sql())
+                    if "." in alter_table_name:
+                        alter_table_name = alter_table_name.split(".")[-1].strip()
 
-            # ---------------- INDEX PARSING ----------------
-            if isinstance(stmt, exp.Create) and isinstance(stmt.this, exp.Index):
-
-                index_name = stmt.this.name
-                table = stmt.args.get("table")
-
-                table_name = table.name if table else None
-
-                cols = []
-                for e in stmt.this.expressions:
-                    cols.append(e.name)
-
-                indexes.append(
-                    Index(
+                    for action in stmt.args.get("actions", []):
+                        if isinstance(action, exp.AddConstraint):
+                            for constraint in action.expressions:
+                                if isinstance(constraint, exp.ForeignKey):
+                                    fk_cols = [_clean_name(e.name) for e in constraint.expressions]
+                                    ref = constraint.args.get("reference")
+                                    if not (ref and ref.this):
+                                        continue
+                                    try:
+                                        ref_table_node = ref.this.this
+                                        if hasattr(ref_table_node, "this"):
+                                            ref_table = _clean_name(str(ref_table_node.this) if not hasattr(ref_table_node.this, "name") else ref_table_node.this.name)
+                                        else:
+                                            ref_table = _clean_name(str(ref_table_node))
+                                        ref_cols = [_clean_name(e.name) for e in ref.this.expressions]
+                                        if alter_table_name in tables:
+                                            for i, fk_col in enumerate(fk_cols):
+                                                ref_col = ref_cols[i] if i < len(ref_cols) else ref_cols[0]
+                                                for col in tables[alter_table_name]:
+                                                    if col.name == fk_col:
+                                                        col.is_foreign_key = True
+                                                        col.references = {"table": ref_table, "column": ref_col}
+                                                        break
+                                    except Exception:
+                                        continue
+                except Exception:
+                    pass
+            elif isinstance(stmt, exp.Create) and isinstance(stmt.this, exp.Index):
+                try:
+                    index_name = _clean_name(stmt.this.name)
+                    tbl = stmt.args.get("table")
+                    tbl_name = _clean_name(tbl.name) if tbl else None
+                    cols = [_clean_name(e.name) for e in stmt.this.expressions if hasattr(e, "name")]
+                    indexes.append(Index(
                         name=index_name,
-                        table=table_name,
+                        table=tbl_name,
                         columns=cols,
-                        unique=stmt.args.get("unique", False)
-                    )
-                )
+                        unique=bool(stmt.args.get("unique", False))
+                    ))
+                except Exception:
+                    pass
+
+        table_list = [Table(name=name, columns=cols) for name, cols in tables.items()]
 
         return ParsedSchema(
-            tables=tables,
+            tables=table_list,
             source_format="sql",
             source_file=self.input_file,
             indexes=indexes
@@ -329,11 +388,9 @@ def _cli():
     parser = SchemaParser(args.input, args.format, dialect=args.dialect)
     schema: ParsedSchema = parser.parse()
 
-    # Print summary
     print("Schema Summary:")
     print(json.dumps(schema.to_summary_dict(), indent=2))
 
-    # Full JSON output
     json_output = schema.model_dump_json(indent=2)
     print("\nFull Parsed Schema:")
     print(json_output)

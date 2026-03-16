@@ -80,14 +80,13 @@ class SchemaGraph:
         
     def migration_order(self):
         """
-        Determine table creation order
+        Determine safe table creation order: referenced tables before referencing tables.
+        Edges in self.graph point child -> parent (employees -> departments).
+        Topological sort on the REVERSED graph gives parent-first order.
         """
-
         try:
             g = self.graph.copy()
-
             g.remove_edges_from(nx.selfloop_edges(g))
-
-            return list(nx.topological_sort(g))
+            return list(nx.topological_sort(g.reverse()))
         except nx.NetworkXUnfeasible:
-            return []
+            return list(self.graph.nodes)
