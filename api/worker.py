@@ -9,7 +9,6 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict
 
-# Ensure project root is on sys.path when worker runs
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from celery import Celery
@@ -27,7 +26,7 @@ celery_app.conf.update(
     accept_content=["json"],
     result_expires=settings.result_ttl,
     task_track_started=True,
-    worker_prefetch_multiplier=1,   # one task at a time per worker
+    worker_prefetch_multiplier=1,  
 )
 
 
@@ -51,7 +50,6 @@ def _run_analysis(file_path: str, input_format: str, dialect: str | None) -> Dic
     )
     schema = schema_parser.parse()
 
-    # Graph + complexity
     graph = SchemaGraph(schema)
     graph.build_graph()
     complexity = SchemaComplexityAnalyzer(schema)
@@ -131,7 +129,6 @@ def analyze_task(self, file_path: str, input_format: str, dialect: str | None = 
         self.update_state(state="PROGRESS", meta={"step": "parsing"})
         result = _run_analysis(file_path, input_format, dialect)
 
-        # AI explanation — use sync entry point (Celery tasks are sync)
         self.update_state(state="PROGRESS", meta={"step": "explaining"})
         try:
             from api.ai_explainer import generate_explanation_sync
@@ -139,7 +136,6 @@ def analyze_task(self, file_path: str, input_format: str, dialect: str | None = 
         except Exception:
             result["ai_explanation"] = None
 
-        # Clean up temp file
         try:
             os.unlink(file_path)
         except Exception:
@@ -148,7 +144,6 @@ def analyze_task(self, file_path: str, input_format: str, dialect: str | None = 
         return {"status": "success", "result": result}
 
     except Exception as exc:
-        # Clean up on failure too
         try:
             os.unlink(file_path)
         except Exception:
