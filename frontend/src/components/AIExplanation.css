@@ -1,0 +1,37 @@
+.ai-card {
+  background: linear-gradient(135deg, rgba(124,106,255,0.08) 0%, rgba(124,106,255,0.03) 100%);
+  border: 1px solid rgba(124,106,255,0.25);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.6;
+}
+
+.ai-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ai-card__icon { color: var(--accent); font-size: 14px; }
+
+.ai-card__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.ai-card__text { color: var(--text); font-size: 15px; line-height: 1.7; }

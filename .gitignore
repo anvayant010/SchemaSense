@@ -1,4 +1,5 @@
 parsed_csv.json
+node_modules/
 .env
 # Byte-compiled / optimized / DLL files
 __pycache__/
