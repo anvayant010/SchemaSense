@@ -1,6 +1,7 @@
-to run the code:
-run the following command in terminal:
-python main.py --input sample_schema.csv --format csv --out parsed.json --score-out scores.json
+run the backend:
+uvicorn api.main:app --reload --port 8000
 
-to run parse & score sql file
-just replace the input and format type in the above command
+run the frontend:
+first go to the frontend folder
+npm install
+npm run dev
