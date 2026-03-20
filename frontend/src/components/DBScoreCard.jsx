@@ -21,6 +21,12 @@ const DB_ICONS = {
   Cassandra: 'CA', DynamoDB: 'DY', Redshift: 'RS', BigQuery: 'BQ',
 }
 
+// Derive quality score from constraint + type support
+
+// Derive migration risk from violations + constraint gaps
+
+// Derive performance score from type + special feature support
+
 function NoteItem({ note, type }) {
   return (
     <div className={`note-item note-item--${type}`}>
@@ -43,12 +49,12 @@ export default function DBScoreCard({ dbName, info, rank, style }) {
   const expl    = info.explanation || {}
   const warnings = expl.migration_warnings || []
   const notes    = expl.column_notes || []
-  const hasDetails = warnings.filter(w => !w.toLowerCase().includes('no major')).length > 0
-    || notes.length > 0
+  const hasDetails = warnings.filter(w => !w.toLowerCase().includes('no major')).length > 0 || notes.length > 0
 
   const errorNotes = notes.filter(n => n.severity === 'error')
   const warnNotes  = notes.filter(n => n.severity === 'warning' && n.table !== '(global)')
   const infoNotes  = notes.filter(n => n.severity === 'info')
+
 
   return (
     <div className={`score-card score-card--${verdict.color} fade-up`} style={style}>
@@ -57,6 +63,7 @@ export default function DBScoreCard({ dbName, info, rank, style }) {
         onClick={() => hasDetails && setExpanded(e => !e)}
         style={{ cursor: hasDetails ? 'pointer' : 'default' }}
       >
+        {/* Left: rank + icon + name */}
         <div className="score-card__left">
           <span className="score-card__rank">#{rank}</span>
           <div className={`score-card__icon score-card__icon--${verdict.color}`}>
@@ -65,6 +72,8 @@ export default function DBScoreCard({ dbName, info, rank, style }) {
           <span className="score-card__name">{dbName}</span>
         </div>
 
+
+        {/* Right: main score bar + badge */}
         <div className="score-card__right">
           <div className="score-card__bar-wrap">
             <div className="score-bar">
@@ -82,9 +91,9 @@ export default function DBScoreCard({ dbName, info, rank, style }) {
         </div>
       </div>
 
+      {/* Expanded details */}
       {expanded && (
         <div className="score-card__body">
-
           <div className="score-breakdown">
             <div className="score-breakdown__item">
               <span className="score-breakdown__label">Types</span>

@@ -86,11 +86,10 @@ export default function UploadPage() {
             rel="noopener noreferrer"
             className="upload-nav__github"
           >
-            <FaGithub className="upload-nav__github-icon" /> {/* placeholder icon – replace with real GitHub icon if using icon library */}
-            GitHub
+            <FaGithub className="upload-nav__github-icon" /> 
           </a>
 
-          <a href="#" className="upload-nav__signin">
+          <a href=" " className="upload-nav__signin">
             Sign in
           </a>
         </div>
