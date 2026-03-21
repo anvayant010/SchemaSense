@@ -37,7 +37,7 @@
 }
 
 .upload-nav__logo-icon {
-  font-size: 28px;
+  font-size: 30px;
   color: var(--accent);
   line-height: 1;
   filter: drop-shadow(0 0 10px rgba(124, 106, 255, 0.6));
@@ -86,7 +86,7 @@
   gap: 8px;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 16px;
   text-decoration: none;
   transition: color 0.2s;
 }
@@ -102,7 +102,7 @@
 .upload-nav__signin {
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 16px;
   text-decoration: none;
   transition: color 0.2s;
 }
@@ -153,7 +153,7 @@
 }
 
 .upload-title {
-  font-size: clamp(34px, 4vw, 58px);
+  font-size: clamp(63px, 4vw, 60px);
   font-weight: 800;
   color: var(--text);
   line-height: 1.05;

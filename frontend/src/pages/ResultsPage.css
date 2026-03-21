@@ -46,7 +46,7 @@
 }
 
 .results-nav__logo-icon {
-  font-size: 28px;
+  font-size: 30px;
   color: var(--accent);
   line-height: 1;
   filter: drop-shadow(0 0 10px rgba(124, 106, 255, 0.6));
@@ -79,7 +79,7 @@
   gap: 8px;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 16px;
   text-decoration: none;
   transition: color 0.2s;
 }
@@ -162,7 +162,7 @@
 
 .results-title {
   font-family: var(--font-display);
-  font-size: clamp(32px, 3.4vw, 50px);
+  font-size: clamp(65px, 3.4vw, 50px);
   font-weight: 800;
   color: var(--text);
   letter-spacing: -0.03em;

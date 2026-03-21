@@ -80,13 +80,8 @@ export default function UploadPage() {
             API online
           </span>
 
-          <a
-            href="https://github.com/anvayant010/SchemaSense" 
-            target="_blank"
-            rel="noopener noreferrer"
-            className="upload-nav__github"
-          >
-            <FaGithub className="upload-nav__github-icon" /> 
+          <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="results-nav__github">
+                      <FaGithub size={18} /> GitHub
           </a>
 
           <a href=" " className="upload-nav__signin">

@@ -9,6 +9,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict
 
+# Ensure project root is on sys.path when worker runs
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from celery import Celery
@@ -26,7 +27,7 @@ celery_app.conf.update(
     accept_content=["json"],
     result_expires=settings.result_ttl,
     task_track_started=True,
-    worker_prefetch_multiplier=1,  
+    worker_prefetch_multiplier=1,   
 )
 
 
@@ -50,6 +51,7 @@ def _run_analysis(file_path: str, input_format: str, dialect: str | None) -> Dic
     )
     schema = schema_parser.parse()
 
+    # Graph + complexity
     graph = SchemaGraph(schema)
     graph.build_graph()
     complexity = SchemaComplexityAnalyzer(schema)
@@ -116,6 +118,7 @@ def _run_analysis(file_path: str, input_format: str, dialect: str | None) -> Dic
             "cycles": graph.detect_cycles(),
             "migration_order": graph.migration_order(),
         },
+        "er_diagram": __import__('core.er_generator', fromlist=['get_er_summary']).get_er_summary(schema),
     }
 
 

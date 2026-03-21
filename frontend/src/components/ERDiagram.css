@@ -1,0 +1,184 @@
+.er-card {
+  background: #0d0d14;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.er-card__header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.er-card__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.er-card__title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.er-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.er-card__dot { color: var(--border-mid); }
+
+.er-card__controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* ── Tabs ────────────────────────────────────────────────────────────────── */
+.er-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.er-tab {
+  padding: 5px 14px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.er-tab:hover { color: var(--text); }
+
+.er-tab--active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 500;
+}
+
+/* ── Copy button ─────────────────────────────────────────────────────────── */
+.er-copy-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.er-copy-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Diagram view ────────────────────────────────────────────────────────── */
+.er-diagram-wrap {
+  padding: 20px;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.er-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.er-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-mid);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.er-error {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--amber);
+  text-align: center;
+  padding: 20px;
+  line-height: 1.6;
+}
+
+.er-error a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.er-diagram {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.er-diagram svg {
+  width: 100%;
+  max-width: 100%;
+  background: transparent !important;
+}
+
+/* ── Code view ───────────────────────────────────────────────────────────── */
+.er-code-wrap {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.er-code-hint {
+  font-size: 13px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  line-height: 1.5;
+}
+
+.er-code-hint a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.er-code {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.7;
+  white-space: pre;
+  overflow-x: auto;
+  tab-size: 2;
+}

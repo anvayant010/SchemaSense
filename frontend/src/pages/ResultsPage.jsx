@@ -5,6 +5,7 @@ import DBScoreCard from '../components/DBScoreCard.jsx'
 import SchemaOverview from '../components/SchemaOverview.jsx'
 import MigrationPlan from '../components/MigrationPlan.jsx'
 import AIExplanation from '../components/AIExplanation.jsx'
+import ERDiagram from '../components/ERDiagram.jsx'
 import './ResultsPage.css'
 
 function deriveQuality(expl) {
@@ -29,20 +30,17 @@ function derivePerformance(expl) {
 function exportReport(result) {
   const scores = Object.entries(result.db_scores || {})
   const lines = []
+  const s = result.schema_summary || {}
+  const plan = result.migration_plan || {}
+  const fileName = result.source_file?.replace(/^tmp\w+\./, 'schema.') || 'schema'
 
   lines.push('SCHEMASENSE ANALYSIS REPORT')
   lines.push('='.repeat(60))
   lines.push(`Generated: ${new Date().toLocaleString()}`)
-  lines.push(`Source: ${result.source_file?.replace(/^tmp\w+\./, 'schema.')} (${result.source_format?.toUpperCase()})`)
+  lines.push(`Source: ${fileName} (${result.source_format?.toUpperCase()})`)
   lines.push('')
-
-  lines.push('SCHEMA SUMMARY')
-  lines.push('-'.repeat(40))
-  const s = result.schema_summary || {}
-  lines.push(`Tables: ${s.tables}  |  Columns: ${s.columns}  |  PKs: ${s.pks}  |  FKs: ${s.fks}`)
-  lines.push(`Quality: ${result.quality?.quality_score}/10 (${result.quality?.quality_label})`)
-  lines.push(`Complexity: ${result.complexity?.complexity_score} (${result.complexity?.complexity_label})`)
-  lines.push(`Migration Risk: ${result.migration_risk?.risk_level} (${result.migration_risk?.risk_score})`)
+  lines.push(`Tables: ${s.tables}  Columns: ${s.columns}  PKs: ${s.pks}  FKs: ${s.fks}`)
+  lines.push(`Quality: ${result.quality?.quality_score}/10  Risk: ${result.migration_risk?.risk_level}`)
   lines.push('')
 
   if (result.ai_explanation) {
@@ -55,21 +53,15 @@ function exportReport(result) {
   lines.push('DATABASE COMPATIBILITY RANKING')
   lines.push('-'.repeat(40))
   scores.forEach(([db, info], i) => {
-    const verdict = info.verdict?.toUpperCase() || ''
-    lines.push(`#${i + 1}  ${db.padEnd(18)} ${String(info.absolute_pct + '%').padEnd(8)} ${verdict}`)
+    lines.push(`#${i+1}  ${db.padEnd(18)} ${String(info.absolute_pct + '%').padEnd(8)} ${(info.verdict || '').toUpperCase()}`)
     const warnings = info.explanation?.migration_warnings || []
-    warnings.filter(w => !w.toLowerCase().includes('no major')).forEach(w => {
-      lines.push(`     > ${w}`)
-    })
+    warnings.filter(w => !w.toLowerCase().includes('no major')).forEach(w => lines.push(`     > ${w}`))
   })
   lines.push('')
 
   lines.push('MIGRATION PLAN')
   lines.push('-'.repeat(40))
-  const plan = result.migration_plan || {}
-  lines.push('Table creation order:')
-  plan.table_creation_order?.forEach((t, i) => lines.push(`  ${i + 1}. ${t}`))
-  lines.push('Steps:')
+  plan.table_creation_order?.forEach((t, i) => lines.push(`  ${i+1}. ${t}`))
   plan.constraint_steps?.forEach(s => lines.push(`  - ${s}`))
 
   const blob = new Blob([lines.join('\n')], { type: 'text/plain' })
@@ -80,6 +72,7 @@ function exportReport(result) {
   a.click()
   URL.revokeObjectURL(url)
 }
+
 
 export default function ResultsPage() {
   const [result, setResult] = useState(null)
@@ -167,6 +160,9 @@ export default function ResultsPage() {
           <div className="results-cards fade-up fade-up-delay-2">
             <SchemaOverview result={result} />
             <MigrationPlan plan={result.migration_plan} risk={result.migration_risk} />
+            {result.er_diagram && (
+              <ERDiagram erData={result.er_diagram} />
+            )}
           </div>
         </div>
 
