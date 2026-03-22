@@ -1,59 +1,103 @@
 from __future__ import annotations
+import re
 from core.models import ParsedSchema
+
+
+def _safe_type(data_type: str, length=None, precision=None, scale=None) -> str:
+    """
+    Produce a Mermaid v11-safe type string.
+    Mermaid erDiagram does NOT allow parentheses in type names.
+    VARCHAR(255) → VARCHAR255, DECIMAL(10,2) → DECIMAL10_2
+    """
+    base = re.sub(r'[^A-Za-z0-9_]', '', data_type)  # strip all non-alphanumeric
+    if not base:
+        base = "TEXT"
+
+    if length:
+        base = f"{base}{length}"
+    elif precision and scale:
+        base = f"{base}{precision}_{scale}"
+    elif precision:
+        base = f"{base}{precision}"
+
+    return base
+
+
+def _safe_name(name: str) -> str:
+    """
+    Sanitize identifiers for Mermaid v11.
+    Only alphanumeric and underscores allowed.
+    """
+    return re.sub(r'[^A-Za-z0-9_]', '_', name).strip('_') or 'unknown'
 
 
 def generate_mermaid_er(schema: ParsedSchema) -> str:
     """
-    Generate a Mermaid erDiagram string from a ParsedSchema.
-    Output can be pasted directly into mermaid.live, Notion, GitHub README, etc.
+    Generate a Mermaid v11-compatible erDiagram string.
+    
+    Key rules for Mermaid v11 erDiagram:
+    - Type names: alphanumeric + underscore only, NO parentheses
+    - Attribute names: alphanumeric + underscore only
+    - Relationship labels: must be quoted strings
+    - Entity names: alphanumeric + underscore only
     """
     if not schema.tables:
         return "erDiagram\n  %% No tables found"
 
     lines = ["erDiagram"]
+    lines.append("")
 
     # Entity definitions
     for table in schema.tables:
-        lines.append(f"  {table.name} {{")
-        for col in table.columns:
-            type_str = col.data_type
-            if col.length:
-                type_str += f"({col.length})"
-            elif col.precision and col.scale:
-                type_str += f"({col.precision},{col.scale})"
+        entity_name = _safe_name(table.name)
+        lines.append(f"  {entity_name} {{")
 
-            key = ""
+        for col in table.columns:
+            type_str = _safe_type(col.data_type, col.length, col.precision, col.scale)
+            col_name = _safe_name(col.name)
+
+            # Key annotation — PK, FK, UK
             if col.is_primary_key:
                 key = " PK"
             elif col.is_foreign_key:
                 key = " FK"
             elif col.is_unique:
                 key = " UK"
+            else:
+                key = ""
 
-            col_name = col.name.replace(" ", "_")
             lines.append(f"    {type_str} {col_name}{key}")
+
         lines.append("  }")
+        lines.append("")
 
-    lines.append("")
-
-    # Relationships from FK columns
-    relationships = []
+    # Relationships
+    seen = set()
     for table in schema.tables:
         for col in table.columns:
             if col.is_foreign_key and col.references:
                 ref_table = col.references.get("table")
-                ref_col   = col.references.get("column", "id")
-                if ref_table:
-                    rel = f'  {table.name} }}o--|| {ref_table} : "{col.name}"'
-                    relationships.append(rel)
+                if not ref_table:
+                    continue
 
-    lines.extend(relationships)
+                from_entity = _safe_name(table.name)
+                to_entity   = _safe_name(ref_table)
+                label       = _safe_name(col.name)
+
+                # Deduplicate relationships
+                key = (from_entity, to_entity, label)
+                if key in seen:
+                    continue
+                seen.add(key)
+
+                # }o--|| = many-to-one (FK side is many, referenced is one)
+                lines.append(f'  {from_entity} }}o--|| {to_entity} : "{label}"')
 
     return "\n".join(lines)
 
 
 def get_er_summary(schema: ParsedSchema) -> dict:
-    """Return metadata about the ER diagram for the API response."""
+    """Return ER diagram data for the API response."""
     fk_pairs = []
     for table in schema.tables:
         for col in table.columns:
