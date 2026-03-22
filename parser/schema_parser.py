@@ -187,11 +187,19 @@ class SchemaParser:
         tables: Dict[str, List[Column]] = {}
         indexes = []
 
-        try:
-            dialect = self.dialect or "mysql"
-            parsed_statements = sqlglot.parse(sql_text, dialect=dialect, error_level=sqlglot.ErrorLevel.WARN)
-        except Exception:
-            parsed_statements = sqlglot.parse(sql_text, error_level=sqlglot.ErrorLevel.WARN)
+        parsed_statements = None
+        for dialect in [self.dialect, "postgres", "mysql", None]:
+            try:
+                if dialect:
+                    parsed_statements = sqlglot.parse(sql_text, dialect=dialect, error_level=sqlglot.ErrorLevel.WARN)
+                else:
+                    parsed_statements = sqlglot.parse(sql_text, error_level=sqlglot.ErrorLevel.WARN)
+                if parsed_statements:
+                    break
+            except Exception:
+                continue
+        if not parsed_statements:
+            parsed_statements = []
 
         def _clean_name(raw: str) -> str:
             """Strip quotes and backticks from identifiers."""
@@ -310,6 +318,7 @@ class SchemaParser:
                         default=default
                     ))
 
+                # Apply table-level FK constraints
                 for fk_info in _extract_fks_from_create(stmt):
                     for col in columns:
                         if col.name == fk_info["fk_col"]:
@@ -319,7 +328,8 @@ class SchemaParser:
 
                 tables[table_name] = columns
 
-            elif isinstance(stmt, exp.AlterTable):
+            # ---------------- ALTER TABLE ... ADD CONSTRAINT FK ----------------
+            elif isinstance(stmt, getattr(exp, 'Alter', None) or getattr(exp, 'AlterTable', type(None))):
                 try:
                     alter_table_name = _clean_name(stmt.this.sql())
                     if "." in alter_table_name:
@@ -352,6 +362,7 @@ class SchemaParser:
                                         continue
                 except Exception:
                     pass
+
             elif isinstance(stmt, exp.Create) and isinstance(stmt.this, exp.Index):
                 try:
                     index_name = _clean_name(stmt.this.name)
