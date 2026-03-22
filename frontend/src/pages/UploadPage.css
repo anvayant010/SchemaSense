@@ -165,7 +165,6 @@
   font-size: 18px;
   line-height: 1.75;
   max-width: 460px;
-  
 }
 
 /* Stats */
@@ -221,7 +220,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   background: var(--bg-card);
-  margin-bottom: 28px;
+  margin-bottom: 16px;
   text-align: center;
 }
 
@@ -296,6 +295,48 @@
 }
 .dropzone__clear:hover { border-color: var(--red); color: var(--red); }
 
+/* ── Sample button ───────────────────────────────────────────────────────── */
+.sample-btn {
+  width: 100%;
+  padding: 11px 16px;
+  margin-bottom: 20px;
+  border-radius: 10px;
+  border: 1px dashed var(--accent-dim);
+  background: rgba(124, 106, 255, 0.04);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  letter-spacing: 0.02em;
+}
+
+.sample-btn:hover {
+  background: rgba(124, 106, 255, 0.1);
+  border-color: var(--accent);
+  border-style: solid;
+}
+
+.sample-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spinner--dark {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(124, 106, 255, 0.3);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+/* Format selector */
 .format-selector {
   display: flex;
   align-items: center;
@@ -356,7 +397,7 @@
 .analyze-btn {
   width: 100%;
   padding: 40px;
-  font-size: 30px;
+  font-size: 25px;
   font-weight: 600;
   margin-bottom: 24px;
   border-radius: 12px;

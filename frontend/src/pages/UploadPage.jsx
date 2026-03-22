@@ -3,6 +3,60 @@ import { useNavigate } from 'react-router-dom'
 import './UploadPage.css'
 import { FaGithub } from 'react-icons/fa'
 
+const SAMPLE_SCHEMA = `-- E-Commerce Platform Schema (SchemaSense sample)
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) NOT NULL UNIQUE,
+    full_name VARCHAR(100) NOT NULL,
+    preferences JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    slug VARCHAR(100) NOT NULL UNIQUE,
+    parent_id INT,
+    FOREIGN KEY (parent_id) REFERENCES categories(id)
+);
+
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10,2) NOT NULL,
+    stock_quantity INT NOT NULL DEFAULT 0,
+    category_id INT NOT NULL,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+CREATE TABLE orders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    total_amount DECIMAL(10,2) NOT NULL,
+    shipping_address JSONB NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE order_items (
+    id SERIAL PRIMARY KEY,
+    order_id UUID NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    unit_price DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+CREATE INDEX idx_products_category ON products(category_id);
+CREATE INDEX idx_orders_user ON orders(user_id);
+CREATE UNIQUE INDEX idx_users_email ON users(email);`
+
 const FORMATS = ['sql', 'csv', 'json']
 const FORMAT_HINTS = {
   sql: 'CREATE TABLE statements, ALTER TABLE, foreign keys',
@@ -46,6 +100,36 @@ export default function UploadPage() {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('format', format)
+      formData.append('async_mode', 'false')
+
+      const res = await fetch('/api/v1/analyze', { method: 'POST', body: formData })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || `Server error ${res.status}`)
+      }
+      const data = await res.json()
+      if (data.status === 'error') throw new Error(data.error || 'Analysis failed')
+      sessionStorage.setItem('schemasense_result', JSON.stringify(data.result))
+      navigate('/results')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSample = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const blob = new Blob([SAMPLE_SCHEMA], { type: 'text/plain' })
+      const sampleFile = new File([blob], 'ecommerce_sample.sql', { type: 'text/plain' })
+      setFile(sampleFile)
+      setFormat('sql')
+
+      const formData = new FormData()
+      formData.append('file', sampleFile)
+      formData.append('format', 'sql')
       formData.append('async_mode', 'false')
 
       const res = await fetch('/api/v1/analyze', { method: 'POST', body: formData })
@@ -161,6 +245,19 @@ export default function UploadPage() {
               </div>
             )}
           </div>
+
+          {/* ── Sample schema button ── */}
+          <button
+            className="sample-btn"
+            onClick={handleSample}
+            disabled={loading}
+          >
+            {loading && !file ? (
+              <><span className="spinner spinner--dark" />Loading sample...</>
+            ) : (
+              <>Try with a sample schema: E-Commerce (5 tables)</>
+            )}
+          </button>
 
           <div className="format-selector">
             <span className="format-selector__label">Format</span>
