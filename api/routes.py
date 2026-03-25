@@ -48,7 +48,7 @@ async def _save_upload(file: UploadFile, suffix: str) -> str:
     return tmp.name
 
 
-# ── Health check 
+# ── Health check ────────────────────────────────────────────────────────────
 
 @router.get("/health")
 async def health():
@@ -58,6 +58,8 @@ async def health():
         "async_mode": settings.use_celery,
     }
 
+
+# ── Main analysis endpoint ───────────────────────────────────────────────────
 
 @router.post("/analyze")
 async def analyze(
@@ -91,6 +93,7 @@ async def analyze(
                 }
             )
         except Exception as e:
+            # Redis unavailable — fall back to sync
             pass
 
     # Synchronous path
@@ -106,6 +109,7 @@ async def analyze(
         raise HTTPException(status_code=500, detail=f"Analysis failed: {type(e).__name__}: {e}")
 
 
+# ── Poll for async results ───────────────────────────────────────────────────
 
 @router.get("/results/{job_id}")
 async def get_result(job_id: str):
@@ -153,7 +157,7 @@ async def get_result(job_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ── Supported databases info 
+# ── Supported databases info ─────────────────────────────────────────────────
 
 @router.get("/databases")
 async def list_databases():
@@ -171,3 +175,79 @@ async def list_databases():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Auth: save analysis ──────────────────────────────────────────────────────
+
+from fastapi import Depends
+from pydantic import BaseModel
+from api.auth import get_current_user, get_optional_user
+from api.database import save_analysis, get_user_history, get_analysis_by_id, delete_analysis, get_user_stats
+
+
+class SaveAnalysisRequest(BaseModel):
+    file_name: str
+    file_format: str
+    result: dict
+
+
+@router.post("/analyses/save")
+async def save_analysis_endpoint(
+    body: SaveAnalysisRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Save an analysis result. Requires authentication."""
+    try:
+        saved = await save_analysis(
+            user_id=user["user_id"],
+            file_name=body.file_name,
+            file_format=body.file_format,
+            result=body.result,
+        )
+        return {"status": "saved", "id": saved.get("id"), "created_at": saved.get("created_at")}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save: {e}")
+
+
+# ── Auth: get history ────────────────────────────────────────────────────────
+
+@router.get("/analyses/history")
+async def get_history(user: dict = Depends(get_current_user)):
+    """Get the current user's analysis history."""
+    import traceback
+    try:
+        history = await get_user_history(user["user_id"])
+        stats   = await get_user_stats(user["user_id"])
+        return {"history": history, "stats": stats}
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(f"HISTORY ERROR: {tb}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch history: {type(e).__name__}: {e}")
+
+
+# ── Auth: get single analysis ────────────────────────────────────────────────
+
+@router.get("/analyses/{analysis_id}")
+async def get_single_analysis(
+    analysis_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Get a single saved analysis by ID."""
+    record = await get_analysis_by_id(analysis_id, user["user_id"])
+    if not record:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    return {"status": "ok", "record": record}
+
+
+# ── Auth: delete analysis ────────────────────────────────────────────────────
+
+@router.delete("/analyses/{analysis_id}")
+async def delete_analysis_endpoint(
+    analysis_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Delete a saved analysis."""
+    deleted = await delete_analysis(analysis_id, user["user_id"])
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    return {"status": "deleted"}
