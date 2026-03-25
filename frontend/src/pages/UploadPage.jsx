@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './UploadPage.css'
 import { FaGithub } from 'react-icons/fa'
+import { useUser, UserButton } from '@clerk/clerk-react'
 
 const SAMPLE_SCHEMA = `-- E-Commerce Platform Schema (SchemaSense sample)
 CREATE TABLE users (
@@ -62,6 +63,24 @@ const FORMAT_HINTS = {
   sql: 'CREATE TABLE statements, ALTER TABLE, foreign keys',
   csv: 'table_name, column_name, data_type, is_pk, is_fk ...',
   json: 'Array of table objects with columns and constraints',
+}
+
+function ClerkNavItem() {
+  const { isSignedIn } = useUser()
+  const navigate = useNavigate()
+  if (isSignedIn) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <button className="btn btn--ghost" style={{ fontSize: '15px', padding: '7px 14px', fontFamily: 'var(--font-mono)' }} onClick={() => navigate('/dashboard')}>
+          Dashboard
+        </button>
+        <UserButton afterSignOutUrl="/" />
+      </div>
+    )
+  }
+  return (
+    <a href="/sign-in" className="upload-nav__signin">Sign in</a>
+  )
 }
 
 export default function UploadPage() {
@@ -163,14 +182,10 @@ export default function UploadPage() {
             <span className="upload-nav__status-dot" />
             API online
           </span>
-
-          <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="results-nav__github">
-                      <FaGithub size={18} /> GitHub
+          <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="upload-nav__github">
+            <FaGithub size={18} /> GitHub
           </a>
-
-          <a href=" " className="upload-nav__signin">
-            Sign in
-          </a>
+          <ClerkNavItem />
         </div>
       </nav>
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FaGithub } from 'react-icons/fa'
+import { useUser, useAuth, UserButton } from '@clerk/clerk-react'
 import DBScoreCard from '../components/DBScoreCard.jsx'
 import SchemaOverview from '../components/SchemaOverview.jsx'
 import MigrationPlan from '../components/MigrationPlan.jsx'
@@ -77,6 +78,10 @@ function exportReport(result) {
 export default function ResultsPage() {
   const [result, setResult] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const { isSignedIn } = useUser()
+  const { getToken } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -92,14 +97,32 @@ export default function ResultsPage() {
     })
   }
 
+  const handleSave = async () => {
+    if (!isSignedIn) { navigate('/sign-in'); return }
+    setSaving(true)
+    try {
+      const token = await getToken()
+      const res = await fetch('/api/v1/analyses/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          file_name: result.source_file?.replace(/^tmp\w+\./, 'schema.') || 'schema',
+          file_format: result.source_format || 'sql',
+          result,
+        })
+      })
+      if (res.ok) setSaved(true)
+    } catch(e) { console.error(e) }
+    finally { setSaving(false) }
+  }
+
   if (!result) return null
 
   const fileName = result.source_file?.replace(/^tmp\w+\./, 'schema.') || 'schema'
 
-  const rawScores = Object.entries(result.db_scores || {})
-  const sortedScores = rawScores
+  const sortedScores = Object.entries(result.db_scores || {})
 
-  const topDB = rawScores[0]
+  const topDB = sortedScores[0]
   return (
     <div className="results-page">
 
@@ -113,15 +136,21 @@ export default function ResultsPage() {
           <button className="results-nav__new btn btn--ghost" onClick={() => navigate('/')}>
             ← New analysis
           </button>
+         
           <button className="btn btn--ghost results-nav__export" onClick={() => exportReport(result)}>
             ↓ Export Report
+          </button>
+          <button
+            className={`btn btn--ghost results-nav__save ${saved ? 'results-nav__save--saved' : ''}`}
+            onClick={handleSave}
+            disabled={saving || saved}
+          >
+            {saved ? '✓ Saved' : saving ? 'Saving...' : '⊕ Save'}
           </button>
           <button className="results-nav__share btn btn--ghost" onClick={handleCopyLink}>
             {copied ? '✓ Copied!' : '⎘ Share'}
           </button>
-          <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="results-nav__github">
-            <FaGithub size={18} /> GitHub
-          </a>
+          {isSignedIn && <UserButton afterSignOutUrl="/" />}
         </div>
       </nav>
 

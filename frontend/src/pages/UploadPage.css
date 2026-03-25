@@ -37,7 +37,7 @@
 }
 
 .upload-nav__logo-icon {
-  font-size: 30px;
+  font-size: 33px;
   color: var(--accent);
   line-height: 1;
   filter: drop-shadow(0 0 10px rgba(124, 106, 255, 0.6));
@@ -45,7 +45,7 @@
 
 .upload-nav__logo-text {
   font-family: var(--font-display);
-  font-size: 25px;
+  font-size: 29px;
   font-weight: 700;
   color: var(--text);
   letter-spacing: -0.02em;

@@ -46,7 +46,7 @@
 }
 
 .results-nav__logo-icon {
-  font-size: 30px;
+  font-size: 31px;
   color: var(--accent);
   line-height: 1;
   filter: drop-shadow(0 0 10px rgba(124, 106, 255, 0.6));
@@ -54,7 +54,7 @@
 
 .results-nav__logo-text {
   font-family: var(--font-display);
-  font-size: 25px;
+  font-size: 28px;
   font-weight: 700;
   color: var(--text);
   letter-spacing: -0.02em;
@@ -63,12 +63,12 @@
 .results-nav__right {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 18px;
 }
 
 .results-nav__new,
 .results-nav__share {
-  font-size: 13px;
+  font-size: 12px;
   padding: 8px 16px;
   font-family: var(--font-mono);
 }
@@ -79,7 +79,7 @@
   gap: 8px;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 16px;
+  font-size: 14px;
   text-decoration: none;
   transition: color 0.2s;
 }
@@ -162,7 +162,7 @@
 
 .results-title {
   font-family: var(--font-display);
-  font-size: clamp(65px, 3.4vw, 50px);
+  font-size: clamp(32px, 3.4vw, 50px);
   font-weight: 800;
   color: var(--text);
   letter-spacing: -0.03em;
@@ -348,3 +348,20 @@
 .sort-menu__item:hover { background: var(--bg-hover); color: var(--text); }
 .sort-menu__item--active { color: var(--accent); }
 .sort-menu__check { color: var(--accent); font-size: 11px; }
+
+/* Save button */
+.results-nav__save {
+  font-size: 13px;
+  padding: 8px 16px;
+  font-family: var(--font-mono);
+  color: var(--accent);
+  border-color: var(--accent-dim);
+}
+.results-nav__save:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+.results-nav__save--saved {
+  color: var(--green) !important;
+  border-color: var(--green-dim) !important;
+}

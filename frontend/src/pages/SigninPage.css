@@ -1,0 +1,270 @@
+/* ── Page shell ─────────────────────────────────────────────────────────── */
+.signin-page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.signin-page__grid {
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(circle, #2a2a3e 1.5px, transparent 1.5px);
+  background-size: 34px 34px;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* ── Navbar ──────────────────────────────────────────────────────────────── */
+.signin-nav {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 48px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(10, 10, 15, 0.92);
+  backdrop-filter: blur(16px);
+  flex-shrink: 0;
+}
+
+.signin-nav__logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.signin-nav__logo-icon {
+  font-size: 36px;
+  color: var(--accent);
+  line-height: 1;
+  filter: drop-shadow(0 0 12px rgba(124, 106, 255, 0.65));
+}
+
+.signin-nav__logo-text {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+/* ── Main content layout ─────────────────────────────────────────────────── */
+.signin-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 48px;
+  align-items: center;           /* crucial for vertical centering */
+  justify-items: stretch;
+}
+
+/* ── Left panel ──────────────────────────────────────────────────────────── */
+.signin-left {
+  padding: 80px 70px 80px 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;       /* ← key fix: centers content vertically inside column */
+  gap: 32px;
+}
+
+.signin-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.signin-eyebrow__line {
+  width: 24px;
+  height: 1px;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.signin-title {
+  font-size: clamp(56px, 4.2vw, 60px);
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+}
+
+.signin-subtitle {
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1.65;
+  max-width: 460px;
+}
+
+/* Feature list */
+.signin-features {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.signin-feature {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 15.5px;
+  color: var(--text-muted);
+}
+
+.signin-feature__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(124, 106, 255, 0.12);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+/* ── Right panel (Clerk) ─────────────────────────────────────────────────── */
+.signin-right {
+  padding:90px 0 90px 80px;
+  display: flex;
+  align-items: center;          
+  justify-content: center;
+  border-left: 1px solid var(--border);
+}
+
+.signin-clerk {
+  width: 100%;
+  max-width: 460px;
+}
+
+/* Clerk style overrides ──────────────────────────────────────────────────── */
+.signin-clerk :global(.cl-rootBox) {
+  width: 100%;
+}
+
+.signin-clerk :global(.cl-card) {
+  background: #111118 !important;
+  border: 1px solid #2a2a3e !important;
+  box-shadow: 0 10px 48px rgba(0,0,0,0.38) !important;
+  border-radius: 16px !important;
+  padding: 40px !important;
+}
+
+.signin-clerk :global(.cl-socialButtonsBlockButton) {
+  background: #1a1a2e !important;
+  border: 1px solid #2a2a3e !important;
+  color: #e8e8f0 !important;
+  height: 48px !important;
+  font-size: 15px !important;
+  border-radius: 10px !important;
+}
+
+.signin-clerk :global(.cl-socialButtonsBlockButton:hover) {
+  background: #22223a !important;
+  border-color: #7c6aff !important;
+}
+
+.signin-clerk :global(.cl-socialButtonsBlockButtonText) {
+  color: #e8e8f0 !important;
+  font-weight: 500 !important;
+}
+
+.signin-clerk :global(.cl-dividerLine) {
+  background: #2a2a3e !important;
+}
+
+.signin-clerk :global(.cl-dividerText) {
+  color: #6b6b8a !important;
+}
+
+.signin-clerk :global(.cl-formFieldInput) {
+  background: #0d0d14 !important;
+  border: 1px solid #2a2a3e !important;
+  color: #e8e8f0 !important;
+  border-radius: 10px !important;
+  height: 48px !important;
+  padding: 0 16px !important;
+}
+
+.signin-clerk :global(.cl-formFieldInput:focus) {
+  border-color: #7c6aff !important;
+  box-shadow: 0 0 0 3px rgba(124,106,255,0.12) !important;
+}
+
+.signin-clerk :global(.cl-formButtonPrimary) {
+  background: #7c6aff !important;
+  border-radius: 10px !important;
+  height: 48px !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+}
+
+.signin-clerk :global(.cl-formButtonPrimary:hover) {
+  background: #8a7aff !important;
+}
+
+.signin-clerk :global(.cl-headerTitle) {
+  color: #e8e8f0 !important;
+  font-size: 22px !important;
+  font-weight: 700 !important;
+}
+
+.signin-clerk :global(.cl-headerSubtitle) {
+  color: #9ca3af !important;
+  font-size: 15px !important;
+}
+
+.signin-clerk :global(.cl-footerActionText),
+.signin-clerk :global(.cl-footerActionLink) {
+  color: #9ca3af !important;
+}
+
+.signin-clerk :global(.cl-footerActionLink) {
+  color: #a5b4fc !important;
+}
+
+/* ── Responsive adjustments ──────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .signin-layout {
+    grid-template-columns: 1fr;
+    padding: 0 24px;
+  }
+
+  .signin-left {
+    padding: 48px 0 32px;
+    text-align: center;
+    justify-content: flex-start;
+  }
+
+  .signin-right {
+    padding: 32px 0 64px;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+
+  .signin-nav {
+    padding: 16px 20px;
+  }
+
+  .signin-title {
+    font-size: clamp(42px, 8vw, 52px);
+  }
+
+  .signin-clerk :global(.cl-card) {
+    padding: 32px !important;
+  }
+}
