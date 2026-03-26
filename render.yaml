@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: schemasense-api
+    name: schemasense
     runtime: docker
     dockerfilePath: ./dockerfile
     branch: main
