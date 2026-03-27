@@ -1,7 +1,7 @@
 import React from 'react';
 import { SignIn } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
-import './SignInPage.css';
+import './SigninPage.css';
 
 export default function SignInPage() {
   const navigate = useNavigate();
