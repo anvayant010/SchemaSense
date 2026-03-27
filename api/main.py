@@ -26,13 +26,15 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"] if not settings.is_production else [
-        "https://schemasense.app",
-        "https://www.schemasense.app",
+        "https://schemasense.vercel.app",
+        "https://schemasense-frontend.vercel.app",
+        # Add your actual Vercel URL here after deployment
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 app.include_router(router, prefix="/api/v1")
 

@@ -1,6 +1,7 @@
 parsed_csv.json
 node_modules/
 .env
+.env.production
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

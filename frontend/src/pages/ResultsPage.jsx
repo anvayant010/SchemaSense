@@ -8,6 +8,7 @@ import MigrationPlan from '../components/MigrationPlan.jsx'
 import AIExplanation from '../components/AIExplanation.jsx'
 import ERDiagram from '../components/ERDiagram.jsx'
 import './ResultsPage.css'
+import API_BASE from '../api.js'
 
 function deriveQuality(expl) {
   const type = expl.type_support_frac ?? 1
@@ -102,7 +103,7 @@ export default function ResultsPage() {
     setSaving(true)
     try {
       const token = await getToken()
-      const res = await fetch('/api/v1/analyses/save', {
+      const res = await fetch('${API_BASE}/analyses/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({

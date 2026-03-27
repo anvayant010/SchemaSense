@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useUser, useAuth, UserButton } from '@clerk/clerk-react'
 import { FaGithub } from 'react-icons/fa'
 import './DashboardPage.css'
+import API_BASE from '../api.js'
 
 const FORMAT_COLOR = { sql: 'accent', csv: 'blue', json: 'amber' }
 const SCORE_COLOR = (pct) => {
@@ -69,7 +70,7 @@ export default function DashboardPage() {
   const fetchHistory = async () => {
     try {
       const token = await getToken()
-      const res = await fetch('/api/v1/analyses/history', {
+      const res = await fetch('${API_BASE}/analyses/history', {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (!res.ok) throw new Error('Failed to fetch history')
@@ -86,7 +87,7 @@ export default function DashboardPage() {
   const handleOpen = async (record) => {
     try {
       const token = await getToken()
-      const res = await fetch(`/api/v1/analyses/${record.id}`, {
+      const res = await fetch(`${API_BASE}/analyses/${record.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
@@ -113,7 +114,7 @@ export default function DashboardPage() {
   const handleDelete = async (id) => {
     try {
       const token = await getToken()
-      await fetch(`/api/v1/analyses/${id}`, {
+      await fetch(`${API_BASE}/analyses/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })

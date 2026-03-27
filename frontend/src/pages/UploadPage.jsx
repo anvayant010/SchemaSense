@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import './UploadPage.css'
 import { FaGithub } from 'react-icons/fa'
 import { useUser, UserButton } from '@clerk/clerk-react'
+import API_BASE from '../api.js'
 
 const SAMPLE_SCHEMA = `-- E-Commerce Platform Schema (SchemaSense sample)
 CREATE TABLE users (
@@ -121,7 +122,7 @@ export default function UploadPage() {
       formData.append('format', format)
       formData.append('async_mode', 'false')
 
-      const res = await fetch('/api/v1/analyze', { method: 'POST', body: formData })
+      const res = await fetch(`${API_BASE}/analyze`, { method: 'POST', body: formData })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail || `Server error ${res.status}`)
@@ -151,7 +152,7 @@ export default function UploadPage() {
       formData.append('format', 'sql')
       formData.append('async_mode', 'false')
 
-      const res = await fetch('/api/v1/analyze', { method: 'POST', body: formData })
+      const res = await fetch(`${API_BASE}/analyze`, { method: 'POST', body: formData })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail || `Server error ${res.status}`)
