@@ -103,7 +103,7 @@ export default function ResultsPage() {
     setSaving(true)
     try {
       const token = await getToken()
-      const res = await fetch('${API_BASE}/analyses/save', {
+      const res = await fetch(`${API_BASE}/analyses/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
