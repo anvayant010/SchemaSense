@@ -24,7 +24,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 48px;                   
+  padding: 14px 40px;
   border-bottom: 1px solid var(--border);
   background: rgba(10, 10, 15, 0.92);
   backdrop-filter: blur(16px);
@@ -37,7 +37,7 @@
 }
 
 .upload-nav__logo-icon {
-  font-size: 33px;
+  font-size: 24px;
   color: var(--accent);
   line-height: 1;
   filter: drop-shadow(0 0 10px rgba(124, 106, 255, 0.6));
@@ -45,7 +45,7 @@
 
 .upload-nav__logo-text {
   font-family: var(--font-display);
-  font-size: 29px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--text);
   letter-spacing: -0.02em;
@@ -62,7 +62,7 @@
   align-items: center;
   gap: 8px;
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
@@ -86,7 +86,7 @@
   gap: 8px;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 16px;
+  font-size: 13px;
   text-decoration: none;
   transition: color 0.2s;
 }
@@ -102,7 +102,7 @@
 .upload-nav__signin {
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 16px;
+  font-size: 13px;
   text-decoration: none;
   transition: color 0.2s;
 }
@@ -127,7 +127,7 @@
 
 /* ── Left panel ──────────────────────────────────────────────────────────── */
 .upload-left {
-  padding: 110px 60px 110px 0;
+  padding: 60px 48px 60px 0;
   display: flex;
   flex-direction: column;
   gap: 38px;
@@ -135,7 +135,7 @@
 
 .upload-left__eyebrow {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--accent);
@@ -153,7 +153,7 @@
 }
 
 .upload-title {
-  font-size: clamp(63px, 4vw, 60px);
+  font-size: clamp(36px, 3vw, 46px);
   font-weight: 800;
   color: var(--text);
   line-height: 1.05;
@@ -162,9 +162,9 @@
 
 .upload-subtitle {
   color: var(--text-muted);
-  font-size: 18px;
-  line-height: 1.75;
-  max-width: 460px;
+  font-size: 15px;
+  line-height: 1.7;
+  max-width: 420px;
 }
 
 /* Stats */
@@ -183,14 +183,14 @@
 
 .upload-stats__num {
   font-family: var(--font-display);
-  font-size: 31px;
+  font-size: 24px;
   font-weight: 800;
   color: var(--accent);
   line-height: 1;
 }
 
 .upload-stats__label {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -205,7 +205,7 @@
 
 /* ── Right panel ─────────────────────────────────────────────────────────── */
 .upload-right {
-  padding: 110px 0 110px 60px;
+  padding: 60px 0 60px 48px;
   border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -216,7 +216,7 @@
 .dropzone {
   border: 1.5px dashed var(--border-mid);
   border-radius: 16px;
-  padding: 72px 24px;
+  padding: 44px 24px;
   cursor: pointer;
   transition: all 0.2s ease;
   background: var(--bg-card);
@@ -254,8 +254,8 @@
 
 .dropzone--active .dropzone__icon { color: var(--accent); }
 
-.dropzone__label { color: var(--text); font-size: 18px; font-weight: 500; }
-.dropzone__hint  { color: var(--text-muted); font-size: 14px; font-family: var(--font-mono); margin-top: 4px; }
+.dropzone__label { color: var(--text); font-size: 15px; font-weight: 500; }
+.dropzone__hint  { color: var(--text-muted); font-size: 12px; font-family: var(--font-mono); margin-top: 4px; }
 
 .dropzone__file { display: flex; align-items: center; gap: 16px; }
 .dropzone__file-icon { font-size: 24px; color: var(--accent); flex-shrink: 0; }
@@ -305,7 +305,7 @@
   background: rgba(124, 106, 255, 0.04);
   color: var(--accent);
   font-family: var(--font-mono);
-  font-size: 16px;
+  font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
@@ -341,12 +341,12 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 28px;
+  margin-bottom: 16px;
   flex-wrap: wrap;
 }
 
 .format-selector__label {
-  font-size: 14px;
+  font-size: 12px;
   font-family: var(--font-mono);
   color: var(--text-muted);
   text-transform: uppercase;
@@ -363,7 +363,7 @@
   background: transparent;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 15px;
+  font-size: 13px;
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -371,7 +371,7 @@
 .format-tab--active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
 
 .format-selector__hint {
-  font-size: 16px;
+  font-size: 12px;
   color: var(--text-dim);
   font-family: var(--font-mono);
   flex: 1;
@@ -396,8 +396,8 @@
 /* Analyze button */
 .analyze-btn {
   width: 100%;
-  padding: 40px;
-  font-size: 25px;
+  padding: 14px;
+  font-size: 15px;
   font-weight: 600;
   margin-bottom: 24px;
   border-radius: 12px;
@@ -415,7 +415,7 @@
 }
 
 .upload-right__footer {
-  font-size: 16px;
+  font-size: 12px;
   color: var(--text-dim);
   font-family: var(--font-mono);
   text-align: center;

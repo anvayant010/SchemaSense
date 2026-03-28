@@ -1,3 +1,4 @@
+/* ── Design tokens ─────────────────────────────────────────────────────── */
 :root {
   --bg:         #0a0a0f;
   --bg-card:    #111118;
@@ -19,7 +20,7 @@
   --blue:       #4a9eff;
   --blue-dim:   #0d2a4a;
 
-  --font-display: 'Play', sans-serif;
+  --font-display: 'Space Grotesk', sans-serif;
   --font-body:    'DM Sans', sans-serif;
   --font-mono:    'DM Mono', monospace;
 
@@ -40,7 +41,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: 13px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
@@ -95,7 +96,7 @@ code, .mono {
   padding: 10px 22px;
   border-radius: var(--radius);
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   border: none;

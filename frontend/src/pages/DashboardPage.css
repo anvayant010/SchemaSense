@@ -50,7 +50,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 48px;
+  padding: 14px 40px;
   border-bottom: 1px solid var(--border);
   background: rgba(10, 10, 15, 0.92);
   backdrop-filter: blur(16px);
@@ -63,14 +63,14 @@
 }
 
 .dashboard-nav__logo-icon {
-  font-size: 33px;
+  font-size: 22px;
   color: var(--accent);
   filter: drop-shadow(0 0 10px rgba(124, 106, 255, 0.6));
 }
 
 .dashboard-nav__logo-text {
   font-family: var(--font-display);
-  font-size: 29px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--text);
   letter-spacing: -0.02em;
@@ -82,7 +82,7 @@
   gap: 20px;
 }
 
-.dashboard-nav__new { font-size: 15px; padding: 8px 16px; font-family: var(--font-mono); }
+.dashboard-nav__new { font-size: 13px; padding: 8px 16px; font-family: var(--font-mono); }
 
 .dashboard-nav__github {
   display: flex;
@@ -100,42 +100,41 @@
 .dashboard-layout {
   flex: 1;
   display: grid;
-  grid-template-columns: 480px 1fr;
-  max-width: 1550px;
+  grid-template-columns: 280px 1fr;
+  max-width: 1400px;
   width: 100%;
   margin: 0 auto;
-  padding: 0 48px;
+  padding: 0 32px;
   gap: 0;
   align-items: start;
 }
 
 /* Left panel */
 .dashboard-left {
-  padding: 64px 48px 100px 0;
+  padding: 28px 36px 60px 0;
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   gap: 28px;
   position: sticky;
-  top: 72px;
+  top: 60px;
 }
 
 .dashboard-user {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-left: -80px;
 }
 
 .dashboard-user__avatar {
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   background: var(--accent-dim);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--accent);
   overflow: hidden;
@@ -151,14 +150,14 @@
 
 .dashboard-user__name {
   font-family: var(--font-display);
-  font-size: 28px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--text);
 }
 
 .dashboard-user__email {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 11px;
   color: var(--text-muted);
   margin-top: 2px;
 }
@@ -172,7 +171,6 @@
   background: #0d0d14;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  margin-left: -80px;
 }
 
 .dashboard-stat {
@@ -183,7 +181,7 @@
 
 .dashboard-stat__num {
   font-family: var(--font-display);
-  font-size: 30px;
+  font-size: 22px;
   font-weight: 800;
   color: var(--accent);
   line-height: 1;
@@ -208,11 +206,10 @@
   align-items: center;
   gap: 10px;
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--accent);
-  margin-left: -80px;
 }
 
 .dashboard-left__eyebrow-line {
@@ -225,12 +222,11 @@
   font-size: 15px;
   color: var(--text-muted);
   line-height: 1.6;
-  margin-left: -80px;
 }
 
 /* Right panel */
 .dashboard-right {
-  padding: 64px 0 100px 48px;
+  padding: 28px 0 60px 36px;
 }
 
 .dashboard-error {
@@ -248,10 +244,10 @@
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  padding: 100px 40px;
+  padding: 80px 20px;
   text-align: center;
   color: var(--text-muted);
-  font-size: 17px;
+  font-size: 16px;
 }
 
 .dashboard-empty__icon { font-size: 40px; color: var(--text-dim); }
@@ -259,15 +255,15 @@
 /* Analysis cards grid */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
 }
 
 .analysis-card {
   background: #0d0d14;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 24px;
+  padding: 20px;
   cursor: pointer;
   transition: border-color 0.15s, box-shadow 0.15s;
   display: flex;
@@ -306,7 +302,7 @@
 }
 
 .analysis-card__name {
-  font-size: 17px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text);
   white-space: nowrap;
@@ -329,7 +325,7 @@
 
 .analysis-card__score {
   font-family: var(--font-mono);
-  font-size: 17px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -339,7 +335,7 @@
 .analysis-card__score--red   { color: var(--red);   }
 
 .analysis-card__db-name {
-  font-size: 14px;
+  font-size: 12px;
   color: var(--text-muted);
   font-weight: 500;
 }
