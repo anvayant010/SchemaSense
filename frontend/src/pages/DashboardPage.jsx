@@ -184,7 +184,7 @@ export default function DashboardPage() {
               </div>
               <div className="dashboard-stat__divider" />
               <div className="dashboard-stat">
-                <span className="dashboard-stat__num" style={{ fontSize: '30px' }}>
+                <span className="dashboard-stat__num" style={{ fontSize: '20px' }}>
                   {stats.favourite_db || '—'}
                 </span>
                 <span className="dashboard-stat__label">Top database</span>
