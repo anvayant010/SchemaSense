@@ -70,7 +70,7 @@ export default function DashboardPage() {
   const fetchHistory = async () => {
     try {
       const token = await getToken()
-      const res = await fetch('${API_BASE}/analyses/history', {
+      const res = await fetch(`${API_BASE}/analyses/history`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (!res.ok) throw new Error('Failed to fetch history')
