@@ -4,7 +4,7 @@
 
 **Intelligent database schema analyzer - find the right database for your schema in seconds**
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-schema--sense--tool.vercel.app-7c6aff?style=for-the-badge&logo=vercel)](https://schema-sense-tool.vercel.app)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-schema--sense--tool.vercel.app-7c6aff?style=for-the-badge&logo=vercel)](https://schemasense-tool.vercel.app)
 [![Python](https://img.shields.io/badge/Python-3.11-blue?style=for-the-badge&logo=python)](https://python.org)
 [![React](https://img.shields.io/badge/React-18-61dafb?style=for-the-badge&logo=react)](https://react.dev)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
@@ -34,7 +34,7 @@ Upload a `.sql`, `.csv`, or `.json` schema file and get:
 
 ## Live Demo
 
-**→ [schema-sense-tool.vercel.app](https://schema-sense-tool.vercel.app)**
+**→ [schemasense-tool.vercel.app](https://schemasense-tool.vercel.app)**
 
 Try it instantly with the built-in **E-Commerce sample schema** - no file upload needed.
 
