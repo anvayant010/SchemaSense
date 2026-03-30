@@ -111,7 +111,6 @@
   color: var(--accent);
 }
 
-/* ── Two-column layout ───────────────────────────────────────────────────── */
 .upload-layout {
   flex: 1;
   display: grid;
@@ -125,7 +124,6 @@
   min-height: 80vh;
 }
 
-/* ── Left panel ──────────────────────────────────────────────────────────── */
 .upload-left {
   padding: 60px 48px 60px 0;
   display: flex;
@@ -203,7 +201,6 @@
   background: var(--border);
 }
 
-/* ── Right panel ─────────────────────────────────────────────────────────── */
 .upload-right {
   padding: 60px 0 60px 48px;
   border-left: 1px solid var(--border);
@@ -295,7 +292,6 @@
 }
 .dropzone__clear:hover { border-color: var(--red); color: var(--red); }
 
-/* ── Sample button ───────────────────────────────────────────────────────── */
 .sample-btn {
   width: 100%;
   padding: 11px 16px;
@@ -336,7 +332,6 @@
   display: inline-block;
 }
 
-/* Format selector */
 .format-selector {
   display: flex;
   align-items: center;
@@ -379,7 +374,6 @@
   margin-top: 2px;
 }
 
-/* Error */
 .upload-error {
   background: var(--red-dim);
   border: 1px solid rgba(255, 85, 85, 0.3);
@@ -393,7 +387,6 @@
   margin-bottom: 14px;
 }
 
-/* Analyze button */
 .analyze-btn {
   width: 100%;
   padding: 14px;

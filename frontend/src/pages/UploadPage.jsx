@@ -183,7 +183,7 @@ export default function UploadPage() {
             <span className="upload-nav__status-dot" />
             API online
           </span>
-          <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="upload-nav__github">
+          <a href="https://github.com/anvayant010/SchemaSense" target="_blank" rel="noopener noreferrer" className="upload-nav__github">
             <FaGithub size={18} /> GitHub
           </a>
           <ClerkNavItem />
